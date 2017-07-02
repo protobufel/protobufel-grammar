@@ -45,6 +45,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
+import org.mockito.junit.MockitoJUnitRunner;
 import org.mockito.junit.MockitoRule;
 import org.mockito.quality.Strictness;
 import org.slf4j.Logger;
@@ -56,7 +57,8 @@ import com.github.protobufel.grammar.Misc.FieldTypeRefsMode;
 import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
 
 @Ignore
-@RunWith(JUnit4.class)
+//@RunWith(JUnit4.class)
+@RunWith(MockitoJUnitRunner.Strict.class)
 public class ProtoFilesTest {
   private static final Logger log = LoggerFactory.getLogger(ProtoFilesTest.class);
   private static final String PROTOC_SUBDIR = "protoc/";
@@ -79,8 +81,7 @@ public class ProtoFilesTest {
   public final JUnitSoftAssertions softly = new JUnitSoftAssertions();
 
   @Rule
-  public final TestRule chain = RuleChain.outerRule(expected).around(MockitoJUnit.collector())
-  .around(softly);
+  public final TestRule chain = RuleChain.outerRule(expected).around(softly);
 
   @Before
   public void setUp() throws Exception {

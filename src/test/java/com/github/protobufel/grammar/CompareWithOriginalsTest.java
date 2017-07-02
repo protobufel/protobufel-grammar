@@ -57,6 +57,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
+import org.mockito.junit.MockitoJUnitRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +70,8 @@ import com.google.protobuf.Descriptors.FileDescriptor;
 import com.google.protobuf.ExtensionRegistry;
 import com.google.protobuf.InvalidProtocolBufferException;
 
-@RunWith(JUnit4.class)
+//@RunWith(JUnit4.class)
+@RunWith(MockitoJUnitRunner.StrictStubs.class)
 public class CompareWithOriginalsTest {
   @SuppressWarnings("unused")
   private static final Logger log = LoggerFactory.getLogger(CompareWithOriginalsTest.class);
@@ -89,8 +91,7 @@ public class CompareWithOriginalsTest {
   public final JUnitSoftAssertions softly = new JUnitSoftAssertions();
 
   @Rule
-  public final TestRule chain = RuleChain.outerRule(expected).around(MockitoJUnit.collector())
-      .around(softly);
+  public final TestRule chain = RuleChain.outerRule(expected).around(softly);
 
   @SuppressWarnings("null")
   @Before

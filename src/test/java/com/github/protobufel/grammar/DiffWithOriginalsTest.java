@@ -56,6 +56,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
+import org.mockito.junit.MockitoJUnitRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,7 +73,8 @@ import difflib.DiffUtils;
 import difflib.Patch;
 import difflib.PatchFailedException;
 
-@RunWith(JUnit4.class)
+//@RunWith(JUnit4.class)
+@RunWith(MockitoJUnitRunner.Silent.class)
 public class DiffWithOriginalsTest {
   @SuppressWarnings("unused")
   private static final Logger log = LoggerFactory.getLogger(DiffWithOriginalsTest.class);
@@ -93,8 +95,7 @@ public class DiffWithOriginalsTest {
   public final JUnitSoftAssertions softly = new JUnitSoftAssertions();
 
   @Rule
-  public final TestRule chain = RuleChain.outerRule(expected).around(MockitoJUnit.collector())
-  .around(softly);
+  public final TestRule chain = RuleChain.outerRule(expected).around(softly);
 
   @SuppressWarnings("null")
   @Before
