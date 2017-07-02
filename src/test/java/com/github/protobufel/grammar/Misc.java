@@ -314,7 +314,6 @@ public final class Misc {
     return oldPos;
   }
 
-  @NonNullByDefault(false)
   public static final class IsComparableToDescriptor extends TypeSafeDiagnosingMatcher<Descriptor> {
     private final Descriptor expected;
 
@@ -379,7 +378,6 @@ public final class Misc {
   }
 
 
-  @NonNullByDefault(false)
   public static final class IsComparableToFileDescriptorProto extends
       TypeSafeDiagnosingMatcher<FileDescriptorProto> {
     private final FileDescriptorProto expected;
@@ -438,7 +436,6 @@ public final class Misc {
     }
   }
 
-  @NonNullByDefault(false)
   public static final class FileDescriptorByNameComparator extends Ordering<FileDescriptorProto> {
     private static final FileDescriptorByNameComparator INSTANCE =
         new FileDescriptorByNameComparator();
@@ -456,7 +453,6 @@ public final class Misc {
     }
   }
 
-  @NonNullByDefault(false)
   public static final class FileDescriptorProtoComparator extends Ordering<FileDescriptorProto> {
     private static final FileDescriptorProtoComparator INSTANCE =
         new FileDescriptorProtoComparator();
@@ -662,7 +658,6 @@ public final class Misc {
       return ReplacerTextComparator.<T>identity().buildReplacementMessage(message, replacer);
     }
 
-    @NonNullByDefault(false)
     @Override
     public int compare(final T o1, final T o2) {
       if (o1 == null) {

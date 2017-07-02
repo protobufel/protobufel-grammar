@@ -55,7 +55,7 @@ import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRule;
+import org.mockito.junit.MockitoJUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,7 +93,7 @@ public class DiffWithOriginalsTest {
   public final JUnitSoftAssertions softly = new JUnitSoftAssertions();
 
   @Rule
-  public final TestRule chain = RuleChain.outerRule(expected).around(new MockitoJUnitRule(this))
+  public final TestRule chain = RuleChain.outerRule(expected).around(MockitoJUnit.collector())
   .around(softly);
 
   @SuppressWarnings("null")

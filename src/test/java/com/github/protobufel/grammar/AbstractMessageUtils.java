@@ -320,7 +320,6 @@ final class AbstractMessageUtils {
       return new FilteredProtoTextComparator(skipPatterns);
     }
 
-    @NonNullByDefault(false)
     @Override
     public int compare(final FileDescriptorProto o1, final FileDescriptorProto o2) {
       if (o1 == o2) {
@@ -411,7 +410,6 @@ final class AbstractMessageUtils {
       return INSTANCE;
     }
 
-    @NonNullByDefault(false)
     @Override
     public int compare(final FileDescriptorProto o1, final FileDescriptorProto o2) {
       return o1 == o2 ? 0 : o1 == null ? -1 : compareProto(o1, o2) ? 0 : -1;
