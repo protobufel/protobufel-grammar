@@ -183,7 +183,7 @@ check.dependsOn jacocoTestReport
 
 generateGrammarSource {
     maxHeapSize = "64m"
-    arguments += ["-visitor", "-long-messages"]
+    arguments += ["-visitor", "-long-messages", "-lib", "src/main/antlr/com/github/protobufel/grammar"]
 }
 
 dependencies {
