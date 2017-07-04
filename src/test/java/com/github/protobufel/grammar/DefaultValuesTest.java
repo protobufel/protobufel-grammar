@@ -27,44 +27,6 @@
 
 package com.github.protobufel.grammar;
 
-import static com.github.protobufel.grammar.Misc.getProtocFileDescriptorProto;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import org.antlr.v4.runtime.RecognitionException;
-import org.antlr.v4.runtime.Recognizer;
-import org.assertj.core.api.JUnitSoftAssertions;
-import org.assertj.core.util.Files;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.junit.rules.RuleChain;
-import org.junit.rules.TestRule;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoJUnitRunner;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.github.protobufel.grammar.ErrorListeners.IBaseProtoErrorListener;
 import com.github.protobufel.grammar.ErrorListeners.LogProtoErrorListener;
 import com.github.protobufel.grammar.Misc.FieldTypeRefsMode;
@@ -76,35 +38,52 @@ import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.Descriptors.FileDescriptor;
 import com.google.protobuf.TextFormat;
+import org.antlr.v4.runtime.RecognitionException;
+import org.antlr.v4.runtime.Recognizer;
+import org.assertj.core.api.JUnitSoftAssertions;
+import org.assertj.core.util.Files;
+import org.junit.*;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static com.github.protobufel.grammar.Misc.getProtocFileDescriptorProto;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 //@RunWith(JUnit4.class)
-@RunWith(MockitoJUnitRunner.Strict.class)
+@RunWith(MockitoJUnitRunner.StrictStubs.class)
 public class DefaultValuesTest {
-  private static final Logger log = LoggerFactory.getLogger(DefaultValuesTest.class);
   public static final int MAX_FIELD_NUMBER = 536870912;
+  private static final Logger log = LoggerFactory.getLogger(DefaultValuesTest.class);
   private static final String PROTOC_SUBDIR = "protoc/";
-
+  private static final String DEFAULT_VALUES_PROTO = "defaults1.proto";
+  @Rule public final JUnitSoftAssertions softly = new JUnitSoftAssertions();
   private final int TestExtremeDefaultValuesIndex = 0;
   private final int ProtocShouldNotConvertIndex = 1;
   private final int SameAsProtocIndex = 2;
   private final int SameAsProtoIndex = 3;
-
-  private static final String DEFAULT_VALUES_PROTO = "defaults1.proto";
   private File baseDir;
   // private List<String> files;
-  @Mock
-  private IBaseProtoErrorListener mockErrorListener;
   private LogProtoErrorListener errorListener;
   private ProtoFiles.Builder filesBuilder;
   private FileDescriptorProto protocProto;
-
-  public final ExpectedException expected = ExpectedException.none();
-  public final JUnitSoftAssertions softly = new JUnitSoftAssertions();
-
-  @Rule
-  public final TestRule chain = RuleChain.outerRule(expected).around(softly);
-
   private List<String> sameAsProtoDefaultValues;
+  @Mock private IBaseProtoErrorListener mockErrorListener;
 
   @Before
   public void setUp() throws Exception {
@@ -131,24 +110,39 @@ public class DefaultValuesTest {
 
     // when
     final FileDescriptor actualFile =
-        filesBuilder.setProtocCompatible(false).addFiles(baseDir, DEFAULT_VALUES_PROTO).build()
-            .values().iterator().next();
+        filesBuilder
+            .setProtocCompatible(false)
+            .addFiles(baseDir, DEFAULT_VALUES_PROTO)
+            .build()
+            .values()
+            .iterator()
+            .next();
     final List<FieldDescriptor> actualFields = getAllDefaultFields(actualFile);
 
     // then
-    softly.assertThat(actualFields).as("check nullness, duplicates, size").isNotNull()
-        .doesNotContainNull().doesNotHaveDuplicates().hasSameSizeAs(expectedFields);
-    softly.assertThat(actualFields).as("check field names equality")
-    .usingElementComparatorOnFields("fullName").containsOnlyElementsOf(expectedFields);
+    softly
+        .assertThat(actualFields)
+        .as("check nullness, duplicates, size")
+        .isNotNull()
+        .doesNotContainNull()
+        .doesNotHaveDuplicates()
+        .hasSameSizeAs(expectedFields);
+    softly
+        .assertThat(actualFields)
+        .as("check field names equality")
+        .usingElementComparatorOnFields("fullName")
+        .containsOnlyElementsOf(expectedFields);
 
     for (final FieldDescriptor actualField : actualFields) {
       final FieldDescriptor expectedField = expectedFields.get(actualField.getIndex());
-      softly.assertThat(actualField.getFullName())
-      .as("field %s name equal to expected", actualField.getFullName())
-      .isEqualTo(expectedField.getFullName());
-      softly.assertThat(actualField.getDefaultValue())
-      .as("field %s default value equal to expected", actualField.getFullName())
-      .isEqualTo(expectedField.getDefaultValue());
+      softly
+          .assertThat(actualField.getFullName())
+          .as("field %s name equal to expected", actualField.getFullName())
+          .isEqualTo(expectedField.getFullName());
+      softly
+          .assertThat(actualField.getDefaultValue())
+          .as("field %s default value equal to expected", actualField.getFullName())
+          .isEqualTo(expectedField.getDefaultValue());
     }
   }
 
@@ -165,8 +159,9 @@ public class DefaultValuesTest {
       assertEqualDescriptorProtoFields(TestExtremeDefaultValuesIndex, false);
     } catch (final AssertionError e) {
       // assuming protoc is wrong, so just log!
-      log.info("protoc is wrong - should leave numeric defaults as in .proto source; "
-          + "our parser is right!");
+      log.info(
+          "protoc is wrong - should leave numeric defaults as in .proto source; "
+              + "our parser is right!");
       // log.debug("protoc differs benign warning", e);
     }
   }
@@ -184,8 +179,9 @@ public class DefaultValuesTest {
       assertEqualDescriptorProtoFields(ProtocShouldNotConvertIndex, false);
     } catch (final AssertionError e) {
       // assuming protoc is wrong, so just log!
-      log.info("protoc is wrong - should leave numeric defaults as in .proto source; "
-          + "our parser is right!");
+      log.info(
+          "protoc is wrong - should leave numeric defaults as in .proto source; "
+              + "our parser is right!");
       // log.debug("protoc differs benign warning", e);
     }
   }
@@ -224,7 +220,8 @@ public class DefaultValuesTest {
   private void sameAsProto(final boolean isProtocCompatible) throws Exception {
     // when
     final Builder protoBuilder =
-        filesBuilder.setProtocCompatible(isProtocCompatible)
+        filesBuilder
+            .setProtocCompatible(isProtocCompatible)
             .addFiles(baseDir, DEFAULT_VALUES_PROTO);
     final List<FieldDescriptorProto> actual =
         protoBuilder.buildProtos().get(0).getMessageType(SameAsProtoIndex).getFieldList();
@@ -233,7 +230,6 @@ public class DefaultValuesTest {
     final List<String> actualDefaultValues = getMessageProtoDefaultValues(actual);
     assertThat(actualDefaultValues).containsExactlyElementsOf(sameAsProtoDefaultValues);
   }
-
 
   private List<String> getMessageProtoDefaultValues(final List<FieldDescriptorProto> actual)
       throws IOException {
@@ -271,28 +267,40 @@ public class DefaultValuesTest {
     return Collections.unmodifiableList(defaultValues);
   }
 
-  private void assertEqualDescriptorProtoFields(final int messageIndex,
-      final boolean isProtocCompatible) throws URISyntaxException, IOException {
+  private void assertEqualDescriptorProtoFields(
+      final int messageIndex, final boolean isProtocCompatible)
+      throws URISyntaxException, IOException {
     // given
     final List<FieldDescriptorProto> expected =
         protocProto.getMessageType(messageIndex).getFieldList();
 
     // when
     final Builder protoBuilder =
-        filesBuilder.setProtocCompatible(isProtocCompatible)
+        filesBuilder
+            .setProtocCompatible(isProtocCompatible)
             .addFiles(baseDir, DEFAULT_VALUES_PROTO);
     final List<FieldDescriptorProto> actual =
         protoBuilder.buildProtos().get(0).getMessageType(messageIndex).getFieldList();
 
     // then
     // no errors logged!
-    verify(mockErrorListener, never()).validationError(anyInt(), anyInt(), anyString(),
-        any(RuntimeException.class));
-    verify(mockErrorListener, never()).syntaxError(any(Recognizer.class), any(), anyInt(),
-        anyInt(), anyString(), any(RecognitionException.class));
+    verify(mockErrorListener, never())
+        .validationError(anyInt(), anyInt(), anyString(), any(RuntimeException.class));
+    verify(mockErrorListener, never())
+        .syntaxError(
+            any(Recognizer.class),
+            any(),
+            anyInt(),
+            anyInt(),
+            anyString(),
+            any(RecognitionException.class));
 
-    assertThat(actual).as("check nullness, duplicates, size").isNotNull().doesNotContainNull()
-        .doesNotHaveDuplicates().hasSameSizeAs(expected);
+    assertThat(actual)
+        .as("check nullness, duplicates, size")
+        .isNotNull()
+        .doesNotContainNull()
+        .doesNotHaveDuplicates()
+        .hasSameSizeAs(expected);
     assertThat(actual).as("check fields equality").containsOnlyElementsOf(expected);
   }
 }

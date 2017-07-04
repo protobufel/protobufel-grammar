@@ -2,9 +2,12 @@
 <project version="4">
   <component name="CompilerConfiguration">
     <bytecodeTargetLevel>
+      <module name="com.github.protobufel.protobufel-grammar_integTest" target="1.8" />
       <module name="com.github.protobufel.protobufel-grammar_jmh" target="1.8" />
       <module name="com.github.protobufel.protobufel-grammar_ma" target="1.8" />
       <module name="com.github.protobufel.protobufel-grammar_main" target="1.8" />
+      <module name="com.github.protobufel.protobufel-grammar_shared" target="1.8" />
+      <module name="com.github.protobufel.protobufel-grammar_sharedResources" target="1.8" />
       <module name="com.github.protobufel.protobufel-grammar_test" target="1.8" />
     </bytecodeTargetLevel>
   </component>
