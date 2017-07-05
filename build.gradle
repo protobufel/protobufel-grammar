@@ -217,6 +217,7 @@ jar {
                 'Implementation-Version': project.version)
     }
 }
+
 jmh {
     jmhVersion = '1.19' // Specifies JMH version
     includeTests = false
