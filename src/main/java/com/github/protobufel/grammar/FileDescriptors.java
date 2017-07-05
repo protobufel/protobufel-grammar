@@ -27,40 +27,25 @@
 
 package com.github.protobufel.grammar;
 
+import com.github.protobufel.grammar.Exceptions.DescriptorValidationRuntimeException;
+import com.google.protobuf.DescriptorProtos.*;
+import com.google.protobuf.DescriptorProtos.FieldDescriptorProto.Type;
+import com.google.protobuf.Descriptors.*;
+import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
+import com.google.protobuf.ExtensionRegistry;
+
+import java.io.IOException;
+import java.util.*;
+
 import static com.github.protobufel.grammar.ExtensionRegistries.buildFullRegistryOf;
 import static com.github.protobufel.grammar.PrimitiveTypesUtil.getSimpleFieldValue;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-
-import com.github.protobufel.grammar.Exceptions.DescriptorValidationRuntimeException;
-import com.google.protobuf.DescriptorProtos.DescriptorProto;
-import com.google.protobuf.DescriptorProtos.FieldDescriptorProto;
-import com.google.protobuf.DescriptorProtos.FieldDescriptorProto.Type;
-import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
-import com.google.protobuf.DescriptorProtos.FileDescriptorProtoOrBuilder;
-import com.google.protobuf.DescriptorProtos.MethodDescriptorProto;
-import com.google.protobuf.DescriptorProtos.ServiceDescriptorProto;
-import com.google.protobuf.Descriptors.Descriptor;
-import com.google.protobuf.Descriptors.DescriptorValidationException;
-import com.google.protobuf.Descriptors.FieldDescriptor;
-import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
-import com.google.protobuf.Descriptors.FileDescriptor;
-import com.google.protobuf.Descriptors.MethodDescriptor;
-import com.google.protobuf.Descriptors.ServiceDescriptor;
-import com.google.protobuf.ExtensionRegistry;
-
 /**
  * Helps in building canonical FileDescriptors.
- *  
+ *
  * @author protobufel@gmail.com David Tesler
  */
-//TODO make public when its functionality fully finalized and stable. 
+//TODO make public when its functionality fully finalized and stable.
 final class FileDescriptors {
   private FileDescriptors() {}
 
@@ -72,13 +57,13 @@ final class FileDescriptors {
     return new Builder(builder);
   }
 
-  final static class Builder {
+  static final class Builder {
+    private final List<FileDescriptor> dependencies;
     private boolean protocCompatible;
     private boolean customOptionsAsExtensions;
     private ExtensionRegistry registry;
     private FileDescriptor fileDescriptor;
     private FileDescriptorProto proto;
-    private final List<FileDescriptor> dependencies;
     private boolean isBuilt;
 
     private Builder() {
@@ -87,19 +72,23 @@ final class FileDescriptors {
       registry = ExtensionRegistry.getEmptyRegistry();
       fileDescriptor = null;
       proto = null;
-      dependencies = new ArrayList<FileDescriptor>();
+      dependencies = new ArrayList<>();
       isBuilt = false;
     }
 
-    private Builder(final boolean protocCompatible, final boolean customOptionsAsExtensions,
-        final ExtensionRegistry registry, final FileDescriptor fileDescriptor,
-        final FileDescriptorProto proto, final List<FileDescriptor> dependencies) {
+    private Builder(
+        final boolean protocCompatible,
+        final boolean customOptionsAsExtensions,
+        final ExtensionRegistry registry,
+        final FileDescriptor fileDescriptor,
+        final FileDescriptorProto proto,
+        final List<FileDescriptor> dependencies) {
       this.protocCompatible = protocCompatible;
       this.customOptionsAsExtensions = customOptionsAsExtensions;
       this.registry = Objects.requireNonNull(registry).getUnmodifiable();
       this.fileDescriptor = fileDescriptor;
       this.proto = proto;
-      this.dependencies = new ArrayList<FileDescriptor>(Objects.requireNonNull(dependencies));
+      this.dependencies = new ArrayList<>(Objects.requireNonNull(dependencies));
       isBuilt = false;
     }
 
@@ -109,7 +98,7 @@ final class FileDescriptors {
       registry = other.registry;
       fileDescriptor = other.fileDescriptor;
       proto = other.proto;
-      dependencies = new ArrayList<FileDescriptor>(other.dependencies);
+      dependencies = new ArrayList<>(other.dependencies);
       isBuilt = false;
     }
 
@@ -147,10 +136,6 @@ final class FileDescriptors {
       return registry;
     }
 
-    public Builder clearRegistry() {
-      return setRegistry(ExtensionRegistry.getEmptyRegistry());
-    }
-
     public Builder setRegistry(final ExtensionRegistry registry) {
       if (this.registry != Objects.requireNonNull(registry)) {
         isBuilt = false;
@@ -158,6 +143,10 @@ final class FileDescriptors {
       }
 
       return this;
+    }
+
+    public Builder clearRegistry() {
+      return setRegistry(ExtensionRegistry.getEmptyRegistry());
     }
 
     public FileDescriptor getFileDescriptor() {
@@ -252,15 +241,16 @@ final class FileDescriptors {
 
     private FileDescriptor build(final FileDescriptor fileDescriptor) {
       try {
-        return FileDescriptor.buildFrom(makeCanonicalProto(fileDescriptor), fileDescriptor
-            .getDependencies().toArray(new FileDescriptor[0]));
+        return FileDescriptor.buildFrom(
+            makeCanonicalProto(fileDescriptor),
+            fileDescriptor.getDependencies().toArray(new FileDescriptor[0]));
       } catch (final DescriptorValidationException e) {
         throw new DescriptorValidationRuntimeException(e);
       }
     }
 
-    private FileDescriptor build(final FileDescriptorProto proto,
-        final FileDescriptor[] dependencies) {
+    private FileDescriptor build(
+        final FileDescriptorProto proto, final FileDescriptor[] dependencies) {
       try {
         final FileDescriptor fileDescriptor = FileDescriptor.buildFrom(proto, dependencies);
         return FileDescriptor.buildFrom(makeCanonicalProto(fileDescriptor), dependencies);
@@ -287,17 +277,21 @@ final class FileDescriptors {
       // fileDescriptor.findEnumTypeByName(enumProto.getName()));
       // }
 
-      for (final ServiceDescriptorProto.Builder serviceProto : protoBuilder.getServiceBuilderList()) {
-        makeCanonicalService(serviceProto, fileDescriptor.findServiceByName(serviceProto.getName()));
+      for (final ServiceDescriptorProto.Builder serviceProto :
+          protoBuilder.getServiceBuilderList()) {
+        makeCanonicalService(
+            serviceProto, fileDescriptor.findServiceByName(serviceProto.getName()));
       }
 
       // TODO: incorporate options' tree walking into canonicalization to eliminate double walking
-      return OptionResolver.newBuilder().setCustomOptionsAsExtensions(false)
-          .resolveAllOptionsFor(fileDescriptor, protoBuilder).build();
+      return OptionResolver.newBuilder()
+          .setCustomOptionsAsExtensions(false)
+          .resolveAllOptionsFor(fileDescriptor, protoBuilder)
+          .build();
     }
 
-    private void makeCanonicalService(final ServiceDescriptorProto.Builder service,
-        final ServiceDescriptor serviceDescriptor) {
+    private void makeCanonicalService(
+        final ServiceDescriptorProto.Builder service, final ServiceDescriptor serviceDescriptor) {
       for (final MethodDescriptorProto.Builder method : service.getMethodBuilderList()) {
         final MethodDescriptor methodDescriptor =
             serviceDescriptor.findMethodByName(method.getName());
@@ -306,17 +300,19 @@ final class FileDescriptors {
       }
     }
 
-    private void makeCanonicalMessage(final DescriptorProto.Builder message,
-        final Descriptor messageDescriptor) {
+    private void makeCanonicalMessage(
+        final DescriptorProto.Builder message, final Descriptor messageDescriptor) {
       final List<FieldDescriptor> extensionsList = messageDescriptor.getExtensions();
 
       if (extensionsList.size() != message.getExtensionBuilderList().size()) {
-        throw new IllegalStateException(String.format(
-            "Message %s has a size of extensions differ from its Descriptor!", message.getName()));
+        throw new IllegalStateException(
+            String.format(
+                "Message %s has a size of extensions differ from its Descriptor!",
+                message.getName()));
       }
 
       if (!extensionsList.isEmpty()) {
-        final Map<Integer, FieldDescriptor> extensionMap = new HashMap<Integer, FieldDescriptor>();
+        final Map<Integer, FieldDescriptor> extensionMap = new HashMap<>();
 
         for (final FieldDescriptor field : extensionsList) {
           extensionMap.put(field.getNumber(), field);
@@ -343,8 +339,8 @@ final class FileDescriptors {
       }
     }
 
-    private void makeCanonicalField(final FieldDescriptorProto.Builder field,
-        final FieldDescriptor fieldDescriptor) {
+    private void makeCanonicalField(
+        final FieldDescriptorProto.Builder field, final FieldDescriptor fieldDescriptor) {
       if (field.hasExtendee() && !field.getExtendee().startsWith(".")) {
         field.setExtendee(ensureLeadingDot(fieldDescriptor.getContainingType().getFullName()));
       }
@@ -375,14 +371,9 @@ final class FileDescriptors {
       // reparsing of the default value if present - protoc does this contrary to the spec!
       if (protocCompatible) {
         if (field.hasDefaultValue()) {
-          try {
             final String defaultValue =
                 getSimpleFieldValue(fieldDescriptor, fieldDescriptor.getDefaultValue());
             field.setDefaultValue(defaultValue);
-          } catch (final IOException e) {
-            // this should not happen!
-            throw new RuntimeException(e);
-          }
         }
       }
     }

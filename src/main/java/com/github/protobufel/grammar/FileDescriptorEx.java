@@ -27,41 +27,23 @@
 
 package com.github.protobufel.grammar;
 
+import com.github.protobufel.grammar.Exceptions.DescriptorValidationRuntimeException;
+import com.google.protobuf.DescriptorProtos;
+import com.google.protobuf.DescriptorProtos.*;
+import com.google.protobuf.DescriptorProtos.FieldDescriptorProto.Type;
+import com.google.protobuf.Descriptors.*;
+import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
+import com.google.protobuf.ExtensionRegistry;
+
+import java.io.IOException;
+import java.util.*;
+
 import static com.github.protobufel.grammar.ExtensionRegistries.buildFullRegistryOf;
 import static com.github.protobufel.grammar.PrimitiveTypesUtil.getSimpleFieldValue;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import com.github.protobufel.grammar.Exceptions.DescriptorValidationRuntimeException;
-import com.google.protobuf.DescriptorProtos;
-import com.google.protobuf.DescriptorProtos.DescriptorProto;
-import com.google.protobuf.DescriptorProtos.EnumDescriptorProto;
-import com.google.protobuf.DescriptorProtos.EnumValueDescriptorProto;
-import com.google.protobuf.DescriptorProtos.FieldDescriptorProto;
-import com.google.protobuf.DescriptorProtos.FieldDescriptorProto.Type;
-import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
-import com.google.protobuf.DescriptorProtos.FileOptions;
-import com.google.protobuf.DescriptorProtos.MethodDescriptorProto;
-import com.google.protobuf.DescriptorProtos.ServiceDescriptorProto;
-import com.google.protobuf.Descriptors.Descriptor;
-import com.google.protobuf.Descriptors.DescriptorValidationException;
-import com.google.protobuf.Descriptors.EnumDescriptor;
-import com.google.protobuf.Descriptors.FieldDescriptor;
-import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
-import com.google.protobuf.Descriptors.FileDescriptor;
-import com.google.protobuf.Descriptors.MethodDescriptor;
-import com.google.protobuf.Descriptors.ServiceDescriptor;
-import com.google.protobuf.ExtensionRegistry;
-
-
 /**
  * FileDescriptor/Proto canonicalization utility. To be removed/refactored when no longer needed.
- * 
+ *
  * @author protobufel@gmail.com David Tesler
  */
 // FIXME most of it wrong and obsolete! isCanonical/deeeplyCanononical might be useful in the
@@ -71,11 +53,11 @@ final class FileDescriptorEx implements Comparable<FileDescriptorEx> {
   private static final FileDescriptorEx DESCRIPTOR_PROTO = new FileDescriptorEx();
   private static boolean protocCompatible = false;
   private final transient FileDescriptor delegate;
+  private final List<FileDescriptorEx> dependencies;
+  private final boolean reparseCustomOptions;
   private FileDescriptorProto proto;
   private transient volatile int hashCode = 0;
   private transient volatile int deeplyCanonical = -1;
-  private final List<FileDescriptorEx> dependencies;
-  private final boolean reparseCustomOptions;
 
   private FileDescriptorEx(final FileDescriptorEx other) {
     delegate = other.delegate;
@@ -89,7 +71,7 @@ final class FileDescriptorEx implements Comparable<FileDescriptorEx> {
   private FileDescriptorEx() {
     delegate = DescriptorProtos.getDescriptor();
     proto = delegate.toProto();
-    dependencies = Collections.<FileDescriptorEx>emptyList();
+    dependencies = Collections.emptyList();
     deeplyCanonical = 1;
     hashCode = delegate.hashCode();
     reparseCustomOptions = false;
@@ -101,9 +83,9 @@ final class FileDescriptorEx implements Comparable<FileDescriptorEx> {
     }
 
     if (delegate.getDependencies().isEmpty()) {
-      dependencies = Collections.<FileDescriptorEx>emptyList();
+      dependencies = Collections.emptyList();
     } else {
-      dependencies = new ArrayList<FileDescriptorEx>(delegate.getDependencies().size());
+      dependencies = new ArrayList<>(delegate.getDependencies().size());
     }
 
     this.delegate = delegate;
@@ -115,10 +97,11 @@ final class FileDescriptorEx implements Comparable<FileDescriptorEx> {
     return DESCRIPTOR_PROTO;
   }
 
-  private static FileDescriptorEx getInstance(final FileDescriptor delegate,
-      final boolean reparseCustomOptions) {
-    return delegate == DESCRIPTOR_PROTO.delegate ? DESCRIPTOR_PROTO : new FileDescriptorEx(
-        delegate, reparseCustomOptions);
+  private static FileDescriptorEx getInstance(
+      final FileDescriptor delegate, final boolean reparseCustomOptions) {
+    return delegate == DESCRIPTOR_PROTO.delegate
+        ? DESCRIPTOR_PROTO
+        : new FileDescriptorEx(delegate, reparseCustomOptions);
   }
 
   static boolean isProtocCompatible() {
@@ -129,8 +112,10 @@ final class FileDescriptorEx implements Comparable<FileDescriptorEx> {
     FileDescriptorEx.protocCompatible = protocCompatible;
   }
 
-  private static FileDescriptorEx buildFrom(final FileDescriptorProto proto,
-      final FileDescriptor[] dependencies, final boolean reparseCustomOptions) {
+  private static FileDescriptorEx buildFrom(
+      final FileDescriptorProto proto,
+      final FileDescriptor[] dependencies,
+      final boolean reparseCustomOptions) {
     try {
       return getInstance(FileDescriptor.buildFrom(proto, dependencies), reparseCustomOptions);
     } catch (final DescriptorValidationException e) {
@@ -138,19 +123,23 @@ final class FileDescriptorEx implements Comparable<FileDescriptorEx> {
     }
   }
 
-  private static FileDescriptor buildCanonicalFileDescriptor(final FileDescriptor file,
-      final boolean reparseCustomOptions) {
+  private static FileDescriptor buildCanonicalFileDescriptor(
+      final FileDescriptor file, final boolean reparseCustomOptions) {
     return getInstance(file, reparseCustomOptions).getCanonicalFileDescriptor(true);
   }
 
-  private static FileDescriptor buildCanonicalFileDescriptor(final FileDescriptorProto proto,
-      final FileDescriptor[] dependencies, final boolean reparseCustomOptions) {
+  private static FileDescriptor buildCanonicalFileDescriptor(
+      final FileDescriptorProto proto,
+      final FileDescriptor[] dependencies,
+      final boolean reparseCustomOptions) {
     return FileDescriptorEx.buildFrom(proto, dependencies, reparseCustomOptions)
         .getCanonicalFileDescriptor(true);
   }
 
-  private static FileDescriptor buildBasicCanonicalFileDescriptor(final FileDescriptorProto proto,
-      final FileDescriptor[] dependencies, final boolean reparseCustomOptions) {
+  private static FileDescriptor buildBasicCanonicalFileDescriptor(
+      final FileDescriptorProto proto,
+      final FileDescriptor[] dependencies,
+      final boolean reparseCustomOptions) {
     return FileDescriptorEx.buildFrom(proto, dependencies, reparseCustomOptions)
         .getBasicCanonicalFileDescriptor(true);
   }
@@ -204,7 +193,7 @@ final class FileDescriptorEx implements Comparable<FileDescriptorEx> {
       return Collections.emptyList();
     }
 
-    final List<FileDescriptorEx> publicDependencies = new ArrayList<FileDescriptorEx>(publicCount);
+    final List<FileDescriptorEx> publicDependencies = new ArrayList<>(publicCount);
     final List<FileDescriptorEx> dependencies = getDependencies();
 
     for (final int publicIndex : delegate.toProto().getPublicDependencyList()) {
@@ -258,8 +247,8 @@ final class FileDescriptorEx implements Comparable<FileDescriptorEx> {
     }
 
     final FileDescriptorEx other = (FileDescriptorEx) obj;
-    return delegate == other.delegate || getName().equals(other.getName())
-        && toProto().equals(other.toProto());
+    return delegate == other.delegate
+        || getName().equals(other.getName()) && toProto().equals(other.toProto());
   }
 
   @Override
@@ -289,8 +278,8 @@ final class FileDescriptorEx implements Comparable<FileDescriptorEx> {
     }
 
     try {
-      return FileDescriptor.buildFrom(toCanonicalProto(),
-          delegate.getDependencies().toArray(new FileDescriptor[0]));
+      return FileDescriptor.buildFrom(
+          toCanonicalProto(), delegate.getDependencies().toArray(new FileDescriptor[0]));
     } catch (final DescriptorValidationException e) {
       throw new DescriptorValidationRuntimeException(e);
     }
@@ -301,8 +290,8 @@ final class FileDescriptorEx implements Comparable<FileDescriptorEx> {
       return delegate;
     }
 
-    return buildFileDescriptorWithReserializedProto(toCanonicalProto(), delegate.getDependencies()
-        .toArray(new FileDescriptor[0]));
+    return buildFileDescriptorWithReserializedProto(
+        toCanonicalProto(), delegate.getDependencies().toArray(new FileDescriptor[0]));
   }
 
   public FileDescriptor getDeepCanonicalFileDescriptor(final boolean forceRebuild) {
@@ -321,8 +310,8 @@ final class FileDescriptorEx implements Comparable<FileDescriptorEx> {
     return buildFileDescriptorWithReserializedProto(toProto(), dependencies);
   }
 
-  private FileDescriptor getDeepCanonicalFileDescriptor(final FileDescriptor file,
-      final boolean forceRebuild) throws DescriptorValidationException {
+  private FileDescriptor getDeepCanonicalFileDescriptor(
+      final FileDescriptor file, final boolean forceRebuild) {
     if (!forceRebuild && isDeeplyCanonical(file)) {
       return file;
     }
@@ -338,8 +327,8 @@ final class FileDescriptorEx implements Comparable<FileDescriptorEx> {
     return buildFileDescriptorWithReserializedProto(proto, dependencies);
   }
 
-  private FileDescriptor buildFileDescriptorWithReserializedProto(final FileDescriptorProto proto,
-      final FileDescriptor[] dependencies) {
+  private FileDescriptor buildFileDescriptorWithReserializedProto(
+      final FileDescriptorProto proto, final FileDescriptor[] dependencies) {
     try {
       final FileDescriptor fileDescriptor = FileDescriptor.buildFrom(proto, dependencies);
       final ExtensionRegistry registry = buildFullRegistryOf(fileDescriptor);
@@ -368,7 +357,7 @@ final class FileDescriptorEx implements Comparable<FileDescriptorEx> {
       return true;
     }
 
-    return deeplyCanonical == 0 ? false : true;
+    return deeplyCanonical != 0;
   }
 
   boolean isDeeplyCanonicalNoDependenciesBuilt() {
@@ -397,7 +386,7 @@ final class FileDescriptorEx implements Comparable<FileDescriptorEx> {
       }
     }
 
-    return deeplyCanonical == 0 ? false : true;
+    return deeplyCanonical != 0;
   }
 
   private boolean isDeeplyCanonical(final FileDescriptor file) {
@@ -569,12 +558,14 @@ final class FileDescriptorEx implements Comparable<FileDescriptorEx> {
       makeCanonicalService(serviceProto, file.findServiceByName(serviceProto.getName()));
     }
 
-    return OptionResolver.newBuilder().setCustomOptionsAsExtensions(reparseCustomOptions)
-        .resolveAllOptionsFor(file, protoBuilder).build();
+    return OptionResolver.newBuilder()
+        .setCustomOptionsAsExtensions(reparseCustomOptions)
+        .resolveAllOptionsFor(file, protoBuilder)
+        .build();
   }
 
-  private void makeCanonicalService(final ServiceDescriptorProto.Builder service,
-      final ServiceDescriptor serviceDescriptor) {
+  private void makeCanonicalService(
+      final ServiceDescriptorProto.Builder service, final ServiceDescriptor serviceDescriptor) {
     for (final MethodDescriptorProto.Builder method : service.getMethodBuilderList()) {
       final MethodDescriptor methodDescriptor =
           serviceDescriptor.findMethodByName(method.getName());
@@ -583,17 +574,19 @@ final class FileDescriptorEx implements Comparable<FileDescriptorEx> {
     }
   }
 
-  private void makeCanonicalMessage(final DescriptorProto.Builder message,
-      final Descriptor messageDescriptor) {
+  private void makeCanonicalMessage(
+      final DescriptorProto.Builder message, final Descriptor messageDescriptor) {
     final List<FieldDescriptor> extensionsList = messageDescriptor.getExtensions();
 
     if (extensionsList.size() != message.getExtensionBuilderList().size()) {
-      throw new IllegalStateException(String.format(
-          "Message %s has a size of extensions differ from its Descriptor!", message.getName()));
+      throw new IllegalStateException(
+          String.format(
+              "Message %s has a size of extensions differ from its Descriptor!",
+              message.getName()));
     }
 
     if (!extensionsList.isEmpty()) {
-      final Map<Integer, FieldDescriptor> extensionMap = new HashMap<Integer, FieldDescriptor>();
+      final Map<Integer, FieldDescriptor> extensionMap = new HashMap<>();
 
       for (final FieldDescriptor field : extensionsList) {
         extensionMap.put(field.getNumber(), field);
@@ -620,8 +613,8 @@ final class FileDescriptorEx implements Comparable<FileDescriptorEx> {
     }
   }
 
-  private void makeCanonicalField(final FieldDescriptorProto.Builder field,
-      final FieldDescriptor fieldDescriptor) {
+  private void makeCanonicalField(
+      final FieldDescriptorProto.Builder field, final FieldDescriptor fieldDescriptor) {
     if (field.hasExtendee() && !field.getExtendee().startsWith(".")) {
       field.setExtendee(ensureLeadingDot(fieldDescriptor.getContainingType().getFullName()));
     }
@@ -654,16 +647,11 @@ final class FileDescriptorEx implements Comparable<FileDescriptorEx> {
       if (field.hasDefaultValue()) {
         final StringBuilder sb = new StringBuilder();
 
-        try {
-          // TextFormat.printFieldValue(fieldDescriptor, fieldDescriptor.getDefaultValue(), sb);
-          // field.setDefaultValue(sb.toString());
-          final String defaultValue =
-              getSimpleFieldValue(fieldDescriptor, fieldDescriptor.getDefaultValue());
-          field.setDefaultValue(defaultValue);
-        } catch (final IOException e) {
-          // this should not happen!
-          throw new RuntimeException(e);
-        }
+        // TextFormat.printFieldValue(fieldDescriptor, fieldDescriptor.getDefaultValue(), sb);
+        // field.setDefaultValue(sb.toString());
+        final String defaultValue =
+            getSimpleFieldValue(fieldDescriptor, fieldDescriptor.getDefaultValue());
+        field.setDefaultValue(defaultValue);
       }
     }
   }

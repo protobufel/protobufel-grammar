@@ -27,52 +27,29 @@
 
 package com.github.protobufel.grammar;
 
-import static com.github.protobufel.grammar.ProtoFileParser.MAX_FIELD_NUMBER;
-
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.NavigableSet;
-import java.util.Set;
-import java.util.TreeSet;
-
 import com.github.protobufel.grammar.Exceptions.InvalidExtensionRange;
 import com.github.protobufel.grammar.ProtoFileParser.ContextLookup;
 import com.github.protobufel.grammar.ProtoParser.ExtensionsContext;
-import com.google.protobuf.DescriptorProtos.DescriptorProto;
+import com.google.protobuf.DescriptorProtos.*;
 import com.google.protobuf.DescriptorProtos.DescriptorProto.Builder;
-import com.google.protobuf.DescriptorProtos.DescriptorProtoOrBuilder;
-import com.google.protobuf.DescriptorProtos.EnumDescriptorProto;
-import com.google.protobuf.DescriptorProtos.EnumOptions;
-import com.google.protobuf.DescriptorProtos.EnumValueDescriptorProto;
-import com.google.protobuf.DescriptorProtos.EnumValueOptions;
-import com.google.protobuf.DescriptorProtos.FieldDescriptorProto;
-import com.google.protobuf.DescriptorProtos.FieldDescriptorProtoOrBuilder;
-import com.google.protobuf.DescriptorProtos.FieldOptions;
-import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
-import com.google.protobuf.DescriptorProtos.FileOptions;
-import com.google.protobuf.DescriptorProtos.MessageOptions;
-import com.google.protobuf.DescriptorProtos.MethodDescriptorProto;
-import com.google.protobuf.DescriptorProtos.MethodOptions;
-import com.google.protobuf.DescriptorProtos.OneofDescriptorProto;
-import com.google.protobuf.DescriptorProtos.ServiceDescriptorProto;
-import com.google.protobuf.DescriptorProtos.ServiceOptions;
-import com.google.protobuf.DescriptorProtos.UninterpretedOption;
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.GeneratedMessage;
 
+import java.util.*;
+
+import static com.github.protobufel.grammar.ProtoFileParser.MAX_FIELD_NUMBER;
+
 /**
- * Classes for {@link ProtoFileParser}'s proto elements scope processing, including some uniqueness 
+ * Classes for {@link ProtoFileParser}'s proto elements scope processing, including some uniqueness
  * validation.
- *   
+ *
  * @author protobufel@gmail.com David Tesler
  */
 class Scopes {
-  private Scope<?> currentScope;
   private final FileScope rootScope;
   private final SymbolScopes symbolScopes;
   private final ContextLookup contextLookup;
+  private Scope<?> currentScope;
 
   public Scopes(final FileDescriptorProto.Builder fileBuilder, final ContextLookup contextLookup) {
     rootScope = new FileScope(fileBuilder);
@@ -97,25 +74,26 @@ class Scopes {
   // FIXME local extension fields with the same extendee, whether resolved or not, mustn't have
   // duplicates!
   public void validateAllExtensionNumbers() {
-    final Map<String, Set<Integer>> extensionNumbers = new HashMap<String, Set<Integer>>(); // multiset
-    Map<String, Set<Integer>> localExtensionNumbers = new HashMap<String, Set<Integer>>();
+    final Map<String, Set<Integer>> extensionNumbers =
+            new HashMap<>(); // multiset
+    Map<String, Set<Integer>> localExtensionNumbers = new HashMap<>();
 
-    for (final FieldDescriptorProtoOrBuilder extension : rootScope.protoBuilder
-        .getExtensionOrBuilderList()) {
+    for (final FieldDescriptorProtoOrBuilder extension :
+        rootScope.protoBuilder.getExtensionOrBuilderList()) {
       processExtensionField(extensionNumbers, localExtensionNumbers, extension);
     }
 
     localExtensionNumbers = null;
 
-    for (final DescriptorProtoOrBuilder childProto : rootScope.protoBuilder
-        .getMessageTypeOrBuilderList()) {
+    for (final DescriptorProtoOrBuilder childProto :
+        rootScope.protoBuilder.getMessageTypeOrBuilderList()) {
       processAllExtensions(childProto, extensionNumbers);
     }
   }
 
-  protected void processAllExtensions(final DescriptorProtoOrBuilder proto,
-      final Map<String, Set<Integer>> extensionNumbers) {
-    Map<String, Set<Integer>> localExtensionNumbers = new HashMap<String, Set<Integer>>();
+  protected void processAllExtensions(
+      final DescriptorProtoOrBuilder proto, final Map<String, Set<Integer>> extensionNumbers) {
+    Map<String, Set<Integer>> localExtensionNumbers = new HashMap<>();
 
     for (final FieldDescriptorProtoOrBuilder extension : proto.getExtensionOrBuilderList()) {
       processExtensionField(extensionNumbers, localExtensionNumbers, extension);
@@ -128,7 +106,8 @@ class Scopes {
     }
   }
 
-  protected void processExtensionField(final Map<String, Set<Integer>> extensionNumbers,
+  protected void processExtensionField(
+      final Map<String, Set<Integer>> extensionNumbers,
       final Map<String, Set<Integer>> localExtensionNumbers,
       final FieldDescriptorProtoOrBuilder extension) {
     if (extension.getExtendee().startsWith(".")) {
@@ -140,12 +119,13 @@ class Scopes {
     }
   }
 
-  protected void lookupExtension(final Map<String, Set<Integer>> extensionNumberCache,
+  protected void lookupExtension(
+      final Map<String, Set<Integer>> extensionNumberCache,
       final FieldDescriptorProtoOrBuilder extension) {
     Set<Integer> fieldNumbers = extensionNumberCache.get(extension.getExtendee());
 
     if (fieldNumbers == null) {
-      fieldNumbers = new HashSet<Integer>();
+      fieldNumbers = new HashSet<>();
       fieldNumbers.add(extension.getNumber());
       extensionNumberCache.put(extension.getExtendee(), fieldNumbers);
     } else if (!fieldNumbers.add(extension.getNumber())) {
@@ -248,7 +228,7 @@ class Scopes {
 
   private <BType extends GeneratedMessage.Builder<BType>> ExtendScope<BType> newExtendScope(
       final Scope<BType> parent, final String extendee) {
-    return new ExtendScope<BType>(parent, extendee);
+    return new ExtendScope<>(parent, extendee);
   }
 
   public OneofDescriptorProto.Builder addOneOf() {
@@ -319,6 +299,112 @@ class Scopes {
 
   // ***************** Member classes START
 
+  private interface IntegralTypePlus<T extends IntegralTypePlus<? super T>> extends Comparable<T> {
+    T getCeiling();
+  }
+
+  private static final class IntegerPlus implements IntegralTypePlus<IntegerPlus> {
+    private final int value;
+    private final boolean isCeiling;
+
+    private IntegerPlus(final int value, final boolean isCeiling) {
+      this.value = value;
+      this.isCeiling = isCeiling;
+    }
+
+    public static IntegerPlus valueOf(final int value) {
+      return new IntegerPlus(value, false);
+    }
+
+    @Override
+    public int compareTo(final IntegerPlus other) {
+      return value == other.value
+          ? Boolean.compare(isCeiling, other.isCeiling)
+          : Integer.compare(value, other.value);
+    }
+
+    public int compareTo(final int value) {
+      return this.value == value
+          ? Boolean.compare(isCeiling, false)
+          : Integer.compare(this.value, value);
+    }
+
+    @Override
+    public IntegerPlus getCeiling() {
+      return isCeiling ? this : new IntegerPlus(value, true);
+    }
+
+    @Override
+    public String toString() {
+      String builder = "IntegerPlus [value=" +
+              value +
+              ", isCeiling=" +
+              isCeiling +
+              "]";
+      return builder;
+    }
+
+    @Override
+    public int hashCode() {
+      final int prime = 31;
+      int result = 1;
+      result = prime * result + (isCeiling ? 1231 : 1237);
+      result = prime * result + value;
+      return result;
+    }
+
+    @Override
+    public boolean equals(final Object obj) {
+      if (this == obj) {
+        return true;
+      }
+      if (obj == null) {
+        return false;
+      }
+      if (!(obj instanceof IntegerPlus)) {
+        return false;
+      }
+      final IntegerPlus other = (IntegerPlus) obj;
+      if (isCeiling != other.isCeiling) {
+        return false;
+      }
+      return value == other.value;
+    }
+  }
+
+  private static final class IntegerRanges {
+    private final NavigableSet<IntegerPlus> delegate;
+
+    public IntegerRanges() {
+      delegate = new TreeSet<>();
+    }
+
+    public boolean addRange(final int start, final int end) {
+      final IntegerPlus rangeStart = IntegerPlus.valueOf(start);
+      final IntegerPlus rangeEnd =
+          start == end ? rangeStart.getCeiling() : IntegerPlus.valueOf(end);
+
+      if (!delegate.subSet(rangeStart, true, rangeEnd, true).isEmpty()) {
+        return false;
+      }
+
+      delegate.add(rangeStart);
+      delegate.add(rangeEnd);
+      return true;
+    }
+
+    public boolean contains(final int value) {
+      if (delegate.isEmpty()
+          || delegate.first().compareTo(value) > 0
+          || delegate.last().compareTo(value) < 0) {
+        return false;
+      }
+
+      final NavigableSet<IntegerPlus> headSet = delegate.headSet(IntegerPlus.valueOf(value), true);
+      return headSet.last().compareTo(value) == 0 || headSet.size() % 2 == 1;
+    }
+  }
+
   protected abstract class Scope<BType extends GeneratedMessage.Builder<BType>> {
     private static final String NOT_APPLICABLE_IN_CURRENT_SCOPE =
         "not applicable in current scope!";
@@ -349,10 +435,11 @@ class Scopes {
 
     /**
      * To be overriden by symbol storing scopes. At the moment, the symbol storing scopes are :
+     *
      * <ul>
-     * <li>MessageScope
-     * <li>EnumScope
-     * <li>GroupScope
+     *   <li>MessageScope
+     *   <li>EnumScope
+     *   <li>GroupScope
      */
     protected void popSymbolScope() {
       // NOOP
@@ -378,7 +465,7 @@ class Scopes {
 
     public boolean isOptionNameUnique(final String optionName) {
       if (optionNames == null) {
-        optionNames = new HashSet<String>();
+        optionNames = new HashSet<>();
       }
 
       return optionNames.add(optionName);
@@ -523,7 +610,7 @@ class Scopes {
 
     public boolean verifyOneofNameUnique(final String oneofName) {
       if (oneofNames == null) {
-        oneofNames = new HashSet<String>();
+        oneofNames = new HashSet<>();
       }
 
       return oneofNames.add(oneofName);
@@ -531,7 +618,7 @@ class Scopes {
 
     public boolean verifyFieldNameUnique(final String fieldName) {
       if (fieldNames == null) {
-        fieldNames = new HashSet<String>();
+        fieldNames = new HashSet<>();
       }
 
       return fieldNames.add(fieldName);
@@ -539,7 +626,7 @@ class Scopes {
 
     public boolean verifyFieldNumberUnique(final int fieldNumber) {
       if (fieldNumbers == null) {
-        fieldNumbers = new HashSet<Integer>();
+        fieldNumbers = new HashSet<>();
       }
 
       return fieldNumbers.add(fieldNumber);
@@ -569,21 +656,21 @@ class Scopes {
       protoBuilder.addExtensionRangeBuilder().setStart(start).setEnd(end + 1);
     }
 
-    private boolean checkValidExtensionRange(final int start, final int end,
-        final ExtensionsContext ctx) {
+    private boolean checkValidExtensionRange(
+        final int start, final int end, final ExtensionsContext ctx) {
       if (start < 0 || start > end || end > MAX_FIELD_NUMBER) {
         contextLookup.reportInvalidExtensionRange(
             new InvalidExtensionRange("wrong extension range"), ctx);
       } else if (start >= RESERVED_EXTENSION_RANGE_START && end <= RESERVED_EXTENSION_RANGE_END) {
-        contextLookup.reportInvalidExtensionRange(new InvalidExtensionRange(
-            "cannot use reserved extension range"), ctx);
+        contextLookup.reportInvalidExtensionRange(
+            new InvalidExtensionRange("cannot use reserved extension range"), ctx);
       }
 
       return true;
     }
 
-    private boolean checkNoExtensionRangeOverlaps(final int start, final int end,
-        final ExtensionsContext ctx) {
+    private boolean checkNoExtensionRangeOverlaps(
+        final int start, final int end, final ExtensionsContext ctx) {
       ranges = ranges == null ? new IntegerRanges() : ranges;
 
       if (ranges.addRange(start, end)) {
@@ -641,7 +728,7 @@ class Scopes {
    * A special scope delegating to its parent scope. All fields and groups of the extend element
    * should be within the parent scope; however, at least a location info for extend might require
    * this to be in its own scope.
-   * 
+   *
    * @param <BType>
    * @author protobufel@gmail.com David Tesler
    */
@@ -684,19 +771,18 @@ class Scopes {
     }
   }
 
-
   /**
    * A special scope delegating to its parent scope. All fields and groups of the extend element
    * should be within the parent scope; however, at least a location info for extend might require
    * this to be in its own scope.
-   * 
-   * @param <BType>
+   *
    * @author protobufel@gmail.com David Tesler
    */
   protected class OneofScope extends Scope<OneofDescriptorProto.Builder> {
     private final int oneofIndex;
 
-    private OneofScope(final OneofDescriptorProto.Builder protoBuilder,
+    private OneofScope(
+        final OneofDescriptorProto.Builder protoBuilder,
         final Scope<DescriptorProto.Builder> parent) {
       super(protoBuilder, parent);
       oneofIndex = parent.getProtoBuilder().getOneofDeclCount() - 1;
@@ -769,8 +855,8 @@ class Scopes {
 
   protected class EnumValueScope extends Scope<EnumValueDescriptorProto.Builder> {
 
-    private EnumValueScope(final EnumValueDescriptorProto.Builder protoBuilder,
-        final Scope<?> parent) {
+    private EnumValueScope(
+        final EnumValueDescriptorProto.Builder protoBuilder, final Scope<?> parent) {
       super(protoBuilder, parent);
     }
 
@@ -821,110 +907,6 @@ class Scopes {
     @Override
     protected MethodOptions.Builder getMethodOptions() {
       return protoBuilder.getOptionsBuilder();
-    }
-  }
-
-  private interface IntegralTypePlus<T extends IntegralTypePlus<? super T>> extends Comparable<T> {
-    public T getCeiling();
-  }
-
-  private static final class IntegerPlus implements IntegralTypePlus<IntegerPlus> {
-    private final int value;
-    private final boolean isCeiling;
-
-    private IntegerPlus(final int value, final boolean isCeiling) {
-      this.value = value;
-      this.isCeiling = isCeiling;
-    }
-
-    public static IntegerPlus valueOf(final int value) {
-      return new IntegerPlus(value, false);
-    }
-
-    @Override
-    public int compareTo(final IntegerPlus other) {
-      return value == other.value ? Boolean.compare(isCeiling, other.isCeiling) : Integer.compare(
-          value, other.value);
-    }
-
-    public int compareTo(final int value) {
-      return this.value == value ? Boolean.compare(isCeiling, false) : Integer.compare(this.value,
-          value);
-    }
-
-    @Override
-    public IntegerPlus getCeiling() {
-      return isCeiling ? this : new IntegerPlus(value, true);
-    }
-
-    @Override
-    public String toString() {
-      final StringBuilder builder = new StringBuilder();
-      builder.append("IntegerPlus [value=").append(value).append(", isCeiling=").append(isCeiling)
-          .append("]");
-      return builder.toString();
-    }
-
-    @Override
-    public int hashCode() {
-      final int prime = 31;
-      int result = 1;
-      result = prime * result + (isCeiling ? 1231 : 1237);
-      result = prime * result + value;
-      return result;
-    }
-
-    @Override
-    public boolean equals(final Object obj) {
-      if (this == obj) {
-        return true;
-      }
-      if (obj == null) {
-        return false;
-      }
-      if (!(obj instanceof IntegerPlus)) {
-        return false;
-      }
-      final IntegerPlus other = (IntegerPlus) obj;
-      if (isCeiling != other.isCeiling) {
-        return false;
-      }
-      if (value != other.value) {
-        return false;
-      }
-      return true;
-    }
-  }
-
-  private static final class IntegerRanges {
-    private final NavigableSet<IntegerPlus> delegate;
-
-    public IntegerRanges() {
-      delegate = new TreeSet<IntegerPlus>();
-    }
-
-    public boolean addRange(final int start, final int end) {
-      final IntegerPlus rangeStart = IntegerPlus.valueOf(start);
-      final IntegerPlus rangeEnd =
-          start == end ? rangeStart.getCeiling() : IntegerPlus.valueOf(end);
-
-      if (!delegate.subSet(rangeStart, true, rangeEnd, true).isEmpty()) {
-        return false;
-      }
-
-      delegate.add(rangeStart);
-      delegate.add(rangeEnd);
-      return true;
-    }
-
-    public boolean contains(final int value) {
-      if (delegate.isEmpty() || delegate.first().compareTo(value) > 0
-          || delegate.last().compareTo(value) < 0) {
-        return false;
-      }
-
-      final NavigableSet<IntegerPlus> headSet = delegate.headSet(IntegerPlus.valueOf(value), true);
-      return headSet.last().compareTo(value) == 0 || headSet.size() % 2 == 1;
     }
   }
 }

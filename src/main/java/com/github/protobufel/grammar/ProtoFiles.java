@@ -27,34 +27,6 @@
 
 package com.github.protobufel.grammar;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import org.antlr.v4.runtime.ANTLRErrorStrategy;
-import org.antlr.v4.runtime.ANTLRFileStream;
-import org.antlr.v4.runtime.ANTLRInputStream;
-import org.antlr.v4.runtime.BailErrorStrategy;
-import org.antlr.v4.runtime.DefaultErrorStrategy;
-import org.antlr.v4.runtime.tree.ParseTreeWalker;
-
 import com.github.protobufel.grammar.ErrorListeners.ConsoleProtoErrorListener;
 import com.github.protobufel.grammar.ErrorListeners.IBaseProtoErrorListener;
 import com.github.protobufel.grammar.Exceptions.DescriptorValidationRuntimeException;
@@ -67,6 +39,17 @@ import com.google.protobuf.DescriptorProtos.FileDescriptorProtoOrBuilder;
 import com.google.protobuf.Descriptors.FileDescriptor;
 import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.ExtensionRegistry;
+import org.antlr.v4.runtime.*;
+import org.antlr.v4.runtime.tree.ParseTreeWalker;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * The main entry point for .proto parsing, and FileDescriptor and FileDescriptorProto generation.
@@ -102,16 +85,16 @@ public final class ProtoFiles {
 
   /**
    * Builds FileDecsriptors/FileDecsriptorProtos based on the specified .proto files, .proto texts,
-   * and FileDecsriptorProtos. The errors are reported based on the supplied
-   * {@link ANTLRErrorStrategy} and {@link IBaseProtoErrorListener}. The built FileDescriptors and
+   * and FileDecsriptorProtos. The errors are reported based on the supplied {@link
+   * ANTLRErrorStrategy} and {@link IBaseProtoErrorListener}. The built FileDescriptors and
    * FileDescriptorProtos are canonical, with all types, options, and the rest resolved.
-   * <p>
-   * If customOptionsAsExtensions set to {@code true}, the resulted FileDecsriptors and
+   *
+   * <p>If customOptionsAsExtensions set to {@code true}, the resulted FileDecsriptors and
    * FileDecsriptorProtos will have their custom options resolved as extensions, otherwise as the
    * unknown fields. Furthermore, when ExtensionRegistry is supplied, the custom options' extensions
    * will be build with it, otherwise these extensions will be built as {@link DynamicMessage}s for
    * the Message types.
-   * 
+   *
    * @author protobufel@gmail.com David Tesler
    */
   public static final class Builder {
@@ -122,24 +105,28 @@ public final class ProtoFiles {
     private final List<FileDescriptorProto> sourceProtos;
     private final ANTLRErrorStrategy errorStrategy;
     private final IBaseProtoErrorListener errorListener;
+    private final FileDescriptors.Builder fileBuilder;
     private boolean showCircularTwice;
     private boolean showExistingNonCircular;
-    private final FileDescriptors.Builder fileBuilder;
 
     Builder() {
-      this(new DefaultErrorStrategy(), new ConsoleProtoErrorListener(""), FileDescriptors
-          .newBuilder());
+      this(
+          new DefaultErrorStrategy(),
+          new ConsoleProtoErrorListener(""),
+          FileDescriptors.newBuilder());
     }
 
     Builder(final ANTLRErrorStrategy errorStrategy, final IBaseProtoErrorListener errorListener) {
       this(errorStrategy, errorListener, FileDescriptors.newBuilder());
     }
 
-    Builder(final ANTLRErrorStrategy errorStrategy, final IBaseProtoErrorListener errorListener,
+    Builder(
+        final ANTLRErrorStrategy errorStrategy,
+        final IBaseProtoErrorListener errorListener,
         final FileDescriptors.Builder fileBuilder) {
-      dirs = new LinkedHashMap<URI, Set<URI>>();
-      sources = new LinkedHashMap<URI, String>();
-      sourceProtos = new ArrayList<FileDescriptorProto>();
+      dirs = new LinkedHashMap<>();
+      sources = new LinkedHashMap<>();
+      sourceProtos = new ArrayList<>();
       this.errorStrategy = Objects.requireNonNull(errorStrategy);
       this.errorListener = Objects.requireNonNull(errorListener);
       this.fileBuilder = Objects.requireNonNull(fileBuilder);
@@ -187,6 +174,12 @@ public final class ProtoFiles {
       return fileBuilder.getRegistry();
     }
 
+    /** Supplies the ExtensionRegistry used to resolve the custom options into extensions. */
+    public Builder setRegistry(final ExtensionRegistry registry) {
+      fileBuilder.setRegistry(registry);
+      return this;
+    }
+
     /**
      * Clears the user supplied ExtensionRegistry used to resolve the custom options into
      * extensions. Will use internal ExtensionRegistry, if customOptionsAsExtensions set to true.
@@ -194,14 +187,6 @@ public final class ProtoFiles {
      */
     public Builder clearRegistry() {
       fileBuilder.clearRegistry();
-      return this;
-    }
-
-    /**
-     * Supplies the ExtensionRegistry used to resolve the custom options into extensions.
-     */
-    public Builder setRegistry(final ExtensionRegistry registry) {
-      fileBuilder.setRegistry(registry);
       return this;
     }
 
@@ -237,9 +222,7 @@ public final class ProtoFiles {
       return this;
     }
 
-    /**
-     * Adds source protos to be processed.
-     */
+    /** Adds source protos to be processed. */
     public Builder addProtos(final Iterable<FileDescriptorProto> protos) {
       if (protos == null) {
         throw new NullPointerException();
@@ -252,9 +235,7 @@ public final class ProtoFiles {
       return this;
     }
 
-    /**
-     * Adds a source proto to be processed.
-     */
+    /** Adds a source proto to be processed. */
     public Builder addProto(final FileDescriptorProto proto) {
       if (proto == null) {
         throw new NullPointerException();
@@ -264,9 +245,7 @@ public final class ProtoFiles {
       return this;
     }
 
-    /**
-     * Adds a source proto to be processed; protoName must be unique.
-     */
+    /** Adds a source proto to be processed; protoName must be unique. */
     public Builder addSource(final String protoName, final String source) {
       if (protoName == null || source == null || source.isEmpty()) {
         throw new NullPointerException();
@@ -278,37 +257,40 @@ public final class ProtoFiles {
 
     /**
      * Adds source .proto files, by glob pattern, for processing.
-     * 
+     *
      * @param baseDir a base directory to get .proto files from
      * @param globPattern a canonical glob pattern, including * and **, separated by {@code /}
      */
     public Builder addFilesByGlob(final File baseDir, final String globPattern) {
-      // TODO replace file discovery by common-files' discovery!
+      //FIXME: replace file discovery by common-files' discovery!
       return addFilesByRegex(baseDir, convertGlobToRegex(globPattern));
     }
 
     private Pattern convertGlobToRegex(final String globPattern) {
-      return Pattern.compile(globPattern.replaceAll("\\\\", "/").replaceAll("[.]", "[.]")
-          .replaceAll("[?]", ".").replaceAll("[*]{2}+", ".*?")
-          .replaceAll("(?<![.])[*]{1}+(?![?])", "[^/]*"));
+      return Pattern.compile(
+          globPattern
+              .replaceAll("\\\\", "/")
+              .replaceAll("[.]", "[.]")
+              .replaceAll("[?]", ".")
+              .replaceAll("[*]{2}+", ".*?")
+              .replaceAll("(?<![.])[*]{1}+(?![?])", "[^/]*"));
     }
 
     /**
      * Adds source .proto files, by regex pattern, for processing.
-     * 
-     * @param baseDir a base directory to get .proto files from
+     *
      * @param pattern a file regex pattern, with canonical {@code /} separator
      */
     public Builder addFilesByRegex(final File rootDir, final Pattern pattern) {
-      final List<String> targetFiles = new ArrayList<String>();
+      final List<String> targetFiles = new ArrayList<>();
       // final File dir = new File(rootDir.toURI().normalize());
       final File dir = getCanonicalFile(rootDir);
       processChildren(dir, dir.toURI(), targetFiles, pattern);
       return addFiles(dir, targetFiles.toArray(new String[0]));
     }
 
-    private void processChildren(final File dir, final URI rootURI, final List<String> targetFiles,
-        final Pattern pattern) {
+    private void processChildren(
+        final File dir, final URI rootURI, final List<String> targetFiles, final Pattern pattern) {
       for (final File child : dir.listFiles()) {
         final String file = rootURI.relativize(child.toURI()).getPath();
         final Matcher matcher = pattern.matcher(file);
@@ -327,7 +309,7 @@ public final class ProtoFiles {
 
     /**
      * Adds source .proto files, based on the rootDir.
-     * 
+     *
      * @param rootDir a base directory to get .proto files from
      * @param protoFiles file paths relative to the rootDir
      */
@@ -338,12 +320,7 @@ public final class ProtoFiles {
 
       // final URI dir = baseDir.toURI().normalize();
       final URI dirURI = getCanonicalFile(rootDir).toURI();
-      Set<URI> fileSet = dirs.get(dirURI);
-
-      if (fileSet == null) {
-        fileSet = new LinkedHashSet<URI>();
-        dirs.put(dirURI, fileSet);
-      }
+      Set<URI> fileSet = dirs.computeIfAbsent(dirURI, k -> new LinkedHashSet<>());
 
       for (final String file : protoFiles) {
         fileSet.add(dirURI.relativize(URI.create(file)).normalize());
@@ -362,7 +339,7 @@ public final class ProtoFiles {
 
     /**
      * Adds .proto resources, based on the rootURI. Imports will be treated as URIs.
-     * 
+     *
      * @param rootURI a base URI to get .proto resources from
      * @param uris proto URIs relative to the rootURI
      */
@@ -372,12 +349,7 @@ public final class ProtoFiles {
       }
 
       final URI dir = rootURI.normalize();
-      Set<URI> fileSet = dirs.get(dir);
-
-      if (fileSet == null) {
-        fileSet = new LinkedHashSet<URI>();
-        dirs.put(dir, fileSet);
-      }
+      Set<URI> fileSet = dirs.computeIfAbsent(dir, k -> new LinkedHashSet<>());
 
       for (final String uri : uris) {
         fileSet.add(URI.create(uri).normalize());
@@ -460,16 +432,17 @@ public final class ProtoFiles {
     /**
      * Returns a mutable list of canonical {@link FileDescriptorProto}s built based on all supplied
      * sources, in the best-effort original input order, as follows:
+     *
      * <ol>
-     * <li>based on input FileDescriptorProtos
-     * <li>based on input .proto files/resources
-     * <li>based on input source texts
+     *   <li>based on input FileDescriptorProtos
+     *   <li>based on input .proto files/resources
+     *   <li>based on input source texts
      * </ol>
-     * <p>
-     * Any source proto in the {@code google.protobuf} reserved space will cause a validation error.
-     * The source {@code descriptor.proto} with the {@code google.protobuf} package, if present,
-     * will be replaced by the runtime singleton {@code DescriptorProtos.getDescriptor()}, ensuring
-     * the runtime uniqueness of the {@code descriptor.proto}.
+     *
+     * <p>Any source proto in the {@code google.protobuf} reserved space will cause a validation
+     * error. The source {@code descriptor.proto} with the {@code google.protobuf} package, if
+     * present, will be replaced by the runtime singleton {@code DescriptorProtos.getDescriptor()},
+     * ensuring the runtime uniqueness of the {@code descriptor.proto}.
      */
     public List<FileDescriptorProto> buildProtos() {
       return buildProtos(true);
@@ -481,7 +454,7 @@ public final class ProtoFiles {
      */
     List<FileDescriptorProto> buildProtos(final boolean validateNotInReservedSpace) {
       final Collection<FileDescriptor> files = build(validateNotInReservedSpace).values();
-      final List<FileDescriptorProto> protoList = new ArrayList<FileDescriptorProto>(files.size());
+      final List<FileDescriptorProto> protoList = new ArrayList<>(files.size());
 
       for (final FileDescriptor file : files) {
         protoList.add(file.toProto());
@@ -506,15 +479,15 @@ public final class ProtoFiles {
 
     /**
      * Builds a sorted FileDescriptor map, in the original order. Useful for testing within the
-     * reserved space; the {@link #build()} delegates to this method with
-     * {@code validateNotInReservedSpace = true}.
+     * reserved space; the {@link #build()} delegates to this method with {@code
+     * validateNotInReservedSpace = true}.
      *
      * @param validateNotInReservedSpace if true, disallows protos in reseved space, which is the
-     *        {@code "google.protobuf"}
+     *     {@code "google.protobuf"}
      * @return a sorted FileDescriptor map based on the source protos
      */
     Map<String, FileDescriptor> build(final boolean validateNotInReservedSpace) {
-      final List<ParsedContext> protos = new ArrayList<ParsedContext>();
+      final List<ParsedContext> protos = new ArrayList<>();
 
       if (!sourceProtos.isEmpty()) {
         for (final FileDescriptorProto proto : sourceProtos) {
@@ -542,16 +515,20 @@ public final class ProtoFiles {
       return buildFiles(protos, validateNotInReservedSpace);
     }
 
-    private Map<String, FileDescriptor> buildFiles(final List<ParsedContext> protos,
-        final boolean validateNotInReservedSpace) {
+    private Map<String, FileDescriptor> buildFiles(
+        final List<ParsedContext> protos, final boolean validateNotInReservedSpace) {
       String protoName = null;
 
       try {
         final Map<String, FileDescriptor> cache =
-            buildFilesFrom(protos, errorListener, showCircularTwice, showExistingNonCircular,
+            buildFilesFrom(
+                protos,
+                errorListener,
+                showCircularTwice,
+                showExistingNonCircular,
                 validateNotInReservedSpace);
         // FIXME get protoSet from BuildFrom!
-        final Map<String, FileDescriptor> resultCache = new LinkedHashMap<String, FileDescriptor>();
+        final Map<String, FileDescriptor> resultCache = new LinkedHashMap<>();
 
         for (final ParsedContext parsedContext : protos) {
           // there can be some bad protos, so check for null first!
@@ -559,8 +536,11 @@ public final class ProtoFiles {
           final FileDescriptor fileDescriptor = cache.get(protoName);
 
           if (fileDescriptor == null) {
-            errorListener.validationError(null, null,
-                String.format("the proto '%s' is not in the file cache!", protoName), null);
+            errorListener.validationError(
+                null,
+                null,
+                String.format("the proto '%s' is not in the file cache!", protoName),
+                null);
           } else {
             // add the cached fileDescriptor in the original order!
             resultCache.put(fileDescriptor.getName(), fileDescriptor);
@@ -576,27 +556,31 @@ public final class ProtoFiles {
     }
 
     private Map<String, FileDescriptor> buildFilesFrom(
-    /* FIXME change to Map? */final List<ParsedContext> protos,
-        final IBaseProtoErrorListener errorListener, final boolean showCircularTwice,
-        final boolean showExistingNonCircular, final boolean validateNotInReservedSpace) {
-      final Map<String, FileDescriptor> fileMap = new LinkedHashMap<String, FileDescriptor>();
-      final LinkedList<ParsedContext> fileProtos = new LinkedList<ParsedContext>();
+        /* FIXME change to Map? */ final List<ParsedContext> protos,
+        final IBaseProtoErrorListener errorListener,
+        final boolean showCircularTwice,
+        final boolean showExistingNonCircular,
+        final boolean validateNotInReservedSpace) {
+      final Map<String, FileDescriptor> fileMap = new LinkedHashMap<>();
+      final LinkedList<ParsedContext> fileProtos = new LinkedList<>();
       final FileDescriptor[] emptyDependencies = new FileDescriptor[0];
-      final Set<String> protoNames = new HashSet<String>();
+      final Set<String> protoNames = new HashSet<>();
       boolean addedDescriptorProto = true;
       boolean validateNotInReservedSpaceError = false;
       boolean foundDuplicateProtos = false;
 
       // it is crucial to replace or add the default runtime DescriptorProtos.getDescriptor(),
       // otherwise all message options will fail!!!
-      for (final ListIterator<ParsedContext> iterator = protos.listIterator(); iterator.hasNext();) {
+      for (final ListIterator<ParsedContext> iterator = protos.listIterator();
+          iterator.hasNext();
+          ) {
         final ParsedContext parsedContext = iterator.next();
         final String protoName = parsedContext.getProto().getName();
 
         if (!protoNames.add(protoName)) {
           foundDuplicateProtos = true;
-          errorListener.validationError(null, null,
-              String.format("a duplicate proto %s", protoName), null);
+          errorListener.validationError(
+              null, null, String.format("a duplicate proto %s", protoName), null);
         }
 
         if (foundDuplicateProtos) {
@@ -635,8 +619,8 @@ public final class ProtoFiles {
           } else if (!protoNames.containsAll(fileProto.getProto().getDependencyList())) {
             for (final String dependency : fileProto.getProto().getDependencyList()) {
               if (!protoNames.contains(dependency)) {
-                errorListener.validationError(null, null, "has a non-existent dependency on '"
-                    + dependency + "'", null);
+                errorListener.validationError(
+                    null, null, "has a non-existent dependency on '" + dependency + "'", null);
               }
             }
           } else {
@@ -650,7 +634,9 @@ public final class ProtoFiles {
           // make them into files
           boolean isLeafFound = false;
 
-          for (final Iterator<ParsedContext> iterator = fileProtos.iterator(); iterator.hasNext();) {
+          for (final Iterator<ParsedContext> iterator = fileProtos.iterator();
+              iterator.hasNext();
+              ) {
             final ParsedContext fileProto = iterator.next();
             final List<String> dependencyList = fileProto.getProto().getDependencyList();
             FileDescriptor[] dependencies;
@@ -674,11 +660,11 @@ public final class ProtoFiles {
           }
 
           if (!isLeafFound) {
-            final Map<String, Set<String>> multimap = new LinkedHashMap<String, Set<String>>();
+            final Map<String, Set<String>> multimap = new LinkedHashMap<>();
 
             for (final ParsedContext fileProto : fileProtos) {
               final LinkedHashSet<String> dependencySet =
-                  new LinkedHashSet<String>(fileProto.getProto().getDependencyList());
+                      new LinkedHashSet<>(fileProto.getProto().getDependencyList());
               dependencySet.removeAll(fileMap.keySet());
               multimap.put(fileProto.getProto().getName(), dependencySet);
             }
@@ -687,23 +673,28 @@ public final class ProtoFiles {
               final String protoName = entry.getKey();
               errorListener.setProtoName(protoName);
 
-              for (final Iterator<String> iterator = entry.getValue().iterator(); iterator
-                  .hasNext();) {
+              for (final Iterator<String> iterator = entry.getValue().iterator();
+                  iterator.hasNext();
+                  ) {
                 final String dependency = iterator.next();
 
                 if (!multimap.keySet().contains(dependency)) {
                   // a non-existent dependency
-                  errorListener.validationError(null, null, "has a non-existent dependency on '"
-                      + dependency + "'", null);
-                } else if (showCircularTwice ? multimap.get(dependency).contains(protoName)
+                  errorListener.validationError(
+                      null, null, "has a non-existent dependency on '" + dependency + "'", null);
+                } else if (showCircularTwice
+                    ? multimap.get(dependency).contains(protoName)
                     : multimap.get(dependency).remove(protoName)) {
                   // a circular dependency
-                  errorListener.validationError(null, null, "has a circular dependency on '"
-                      + dependency + "'", null);
+                  errorListener.validationError(
+                      null, null, "has a circular dependency on '" + dependency + "'", null);
                 } else if (showExistingNonCircular) {
                   // a dependency on existing but not resolvable
-                  errorListener.validationError(null, null,
-                      "has a dependency on existing but not resolvable '" + dependency + "'", null);
+                  errorListener.validationError(
+                      null,
+                      null,
+                      "has a dependency on existing but not resolvable '" + dependency + "'",
+                      null);
                 }
               }
             }
@@ -723,8 +714,10 @@ public final class ProtoFiles {
       return fileMap;
     }
 
-    private boolean buildAndCacheProto(final Map<String, FileDescriptor> cache,
-        final ParsedContext fileProto, final FileDescriptor[] dependencies,
+    private boolean buildAndCacheProto(
+        final Map<String, FileDescriptor> cache,
+        final ParsedContext fileProto,
+        final FileDescriptor[] dependencies,
         final IBaseProtoErrorListener errorListener) {
       try {
         // if (fileProto.resolveAllRefs(Arrays.asList(dependencies), errorListener)) {
@@ -745,13 +738,16 @@ public final class ProtoFiles {
       return false;
     }
 
-    private boolean validateNotInReservedSpace(final FileDescriptorProtoOrBuilder proto,
-        final IBaseProtoErrorListener errorListener) {
+    private boolean validateNotInReservedSpace(
+        final FileDescriptorProtoOrBuilder proto, final IBaseProtoErrorListener errorListener) {
       if (proto.hasPackage()
-          && (proto.getPackage().equals("google.protobuf") || proto.getPackage().startsWith(
-              "google.protobuf."))) {
-        errorListener.validationError(null, null,
-            String.format("proto %s has package in reserved space", proto.getName()), null);
+          && (proto.getPackage().equals("google.protobuf")
+              || proto.getPackage().startsWith("google.protobuf."))) {
+        errorListener.validationError(
+            null,
+            null,
+            String.format("proto %s has package in reserved space", proto.getName()),
+            null);
         return false;
       } else {
         return true;

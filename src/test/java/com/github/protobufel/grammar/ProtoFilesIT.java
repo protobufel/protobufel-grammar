@@ -27,24 +27,13 @@
 
 package com.github.protobufel.grammar;
 
-import static com.github.protobufel.grammar.Misc.getProtocFileDescriptorProtos;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.nullValue;
-import static org.hamcrest.Matchers.stringContainsInOrder;
-// import static org.junit.Assert.*;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-
-import java.io.File;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Pattern;
-
+import com.github.protobufel.grammar.ErrorListeners.IBaseProtoErrorListener;
+import com.github.protobufel.grammar.ErrorListeners.LogProtoErrorListener;
+import com.github.protobufel.grammar.Misc.FieldTypeRefsMode;
+import com.google.common.base.Charsets;
+import com.google.common.io.Files;
+import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
+import com.google.protobuf.Descriptors.FileDescriptor;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 import org.junit.After;
@@ -59,13 +48,20 @@ import org.mockito.runners.MockitoJUnitRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.protobufel.grammar.ErrorListeners.IBaseProtoErrorListener;
-import com.github.protobufel.grammar.ErrorListeners.LogProtoErrorListener;
-import com.github.protobufel.grammar.Misc.FieldTypeRefsMode;
-import com.google.common.base.Charsets;
-import com.google.common.io.Files;
-import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
-import com.google.protobuf.Descriptors.FileDescriptor;
+import java.io.File;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
+
+import static com.github.protobufel.grammar.Misc.getProtocFileDescriptorProtos;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.*;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyInt;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.*;
+
+// import static org.junit.Assert.*;
 // import static org.mockito.Matchers.isNull;
 
 // public class ProtoFilesTest extends MockitoBase {
@@ -79,12 +75,11 @@ public class ProtoFilesIT {
   private static final String MAIN_TEST_RESOURCES_DIR = "";
 
   private static final Pattern ALL_PROTOS_PATTERN = Pattern.compile(".+?\\.proto");
+  private final Pattern filePattern = ALL_PROTOS_PATTERN;
   private File baseDir;
   private File mainBasedir;
-  private final Pattern filePattern = ALL_PROTOS_PATTERN;
   // private List<String> files;
-  @Mock
-  private IBaseProtoErrorListener mockErrorListener;
+  @Mock private IBaseProtoErrorListener mockErrorListener;
   private LogProtoErrorListener errorListener;
   private ProtoFiles.Builder filesBuilder;
   private List<FileDescriptorProto> protocFdProtos;
@@ -120,10 +115,16 @@ public class ProtoFilesIT {
     // then
     final ArgumentCaptor<String> argument = ArgumentCaptor.forClass(String.class);
     // TODO: add position capturing and asserts!
-    verify(mockErrorListener, atLeastOnce()).validationError(anyInt(), anyInt(),
-        argument.capture(), any(RuntimeException.class));
-    verify(mockErrorListener, never()).syntaxError(any(Recognizer.class), any(), anyInt(),
-        anyInt(), anyString(), any(RecognitionException.class));
+    verify(mockErrorListener, atLeastOnce())
+        .validationError(anyInt(), anyInt(), argument.capture(), any(RuntimeException.class));
+    verify(mockErrorListener, never())
+        .syntaxError(
+            any(Recognizer.class),
+            any(),
+            anyInt(),
+            anyInt(),
+            anyString(),
+            any(RecognitionException.class));
     // verify(mockErrorListener, atLeast(protocFdProtos.size())).setProtoName(anyString());
     final List<String> actualErrors = argument.getAllValues();
 

@@ -27,12 +27,10 @@
 
 package com.github.protobufel.grammar;
 
-import static com.github.protobufel.grammar.Misc.getProtocFileDescriptorProtos;
-
-import java.io.File;
-import java.util.List;
-import java.util.regex.Pattern;
-
+import com.github.protobufel.grammar.ErrorListeners.IBaseProtoErrorListener;
+import com.github.protobufel.grammar.ErrorListeners.LogProtoErrorListener;
+import com.github.protobufel.grammar.Misc.FieldTypeRefsMode;
+import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
 import org.assertj.core.api.JUnitSoftAssertions;
 import org.junit.After;
 import org.junit.Before;
@@ -42,19 +40,16 @@ import org.junit.rules.ExpectedException;
 import org.junit.rules.RuleChain;
 import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.mockito.junit.MockitoRule;
-import org.mockito.quality.Strictness;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.protobufel.grammar.ErrorListeners.IBaseProtoErrorListener;
-import com.github.protobufel.grammar.ErrorListeners.LogProtoErrorListener;
-import com.github.protobufel.grammar.Misc.FieldTypeRefsMode;
-import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
+import java.io.File;
+import java.util.List;
+import java.util.regex.Pattern;
+
+import static com.github.protobufel.grammar.Misc.getProtocFileDescriptorProtos;
 
 @Ignore
 //@RunWith(JUnit4.class)
@@ -67,21 +62,17 @@ public class ProtoFilesTest {
   // private static final Pattern ALL_PROTOS_PATTERN = Pattern.compile(".+?\\.proto"); wrong by
   // allowing descriptor.proto!
   private static final Pattern ALL_PROTOS_PATTERN = Pattern.compile("[^/]+?\\.proto");
+  public final ExpectedException expected = ExpectedException.none();
+  public final JUnitSoftAssertions softly = new JUnitSoftAssertions();
+  @Rule public final TestRule chain = RuleChain.outerRule(expected).around(softly);
+  private final Pattern filePattern = ALL_PROTOS_PATTERN;
   private File baseDir;
   private File mainBasedir;
-  private final Pattern filePattern = ALL_PROTOS_PATTERN;
   // private List<String> files;
-  @Mock
-  private IBaseProtoErrorListener mockErrorListener;
+  @Mock private IBaseProtoErrorListener mockErrorListener;
   private LogProtoErrorListener errorListener;
   private ProtoFiles.Builder filesBuilder;
   private List<FileDescriptorProto> protocFdProtos;
-
-  public final ExpectedException expected = ExpectedException.none();
-  public final JUnitSoftAssertions softly = new JUnitSoftAssertions();
-
-  @Rule
-  public final TestRule chain = RuleChain.outerRule(expected).around(softly);
 
   @Before
   public void setUp() throws Exception {

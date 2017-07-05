@@ -27,10 +27,10 @@
 
 package com.github.protobufel.grammar;
 
-import java.util.List;
-
 import com.google.protobuf.Descriptors.DescriptorValidationException;
 import com.google.protobuf.Message;
+
+import java.util.List;
 
 /**
  * Various validation exceptions used by {@link ProtoFileParser}.
@@ -40,12 +40,12 @@ import com.google.protobuf.Message;
 public final class Exceptions {
   private Exceptions() {}
 
-  public static interface IProtoParserException {
-    public String getMessageFormat();
+  public interface IProtoParserException {
+    String getMessageFormat();
   }
 
-  public static final class NonUniqueException extends RuntimeException implements
-      IProtoParserException {
+  public static final class NonUniqueException extends RuntimeException
+      implements IProtoParserException {
     private static final long serialVersionUID = 1L;
     private static final String MESSAGE_FORMAT = "the %s:%s already set";
     private final String propertyName;
@@ -65,8 +65,8 @@ public final class Exceptions {
     }
   }
 
-  public static final class NonUniqueExtensionNumber extends RuntimeException implements
-      IProtoParserException {
+  public static final class NonUniqueExtensionNumber extends RuntimeException
+      implements IProtoParserException {
     private static final long serialVersionUID = 1L;
     private static final String MESSAGE_FORMAT = "extension '%s.%s' number %d is already taken";
 
@@ -84,8 +84,8 @@ public final class Exceptions {
     }
   }
 
-  public static final class FieldInExtensionRangeException extends RuntimeException implements
-      IProtoParserException {
+  public static final class FieldInExtensionRangeException extends RuntimeException
+      implements IProtoParserException {
     private static final long serialVersionUID = 1L;
     private static final String MESSAGE_FORMAT =
         "the %s field number should not be in the message/group extension ranges";
@@ -100,8 +100,8 @@ public final class Exceptions {
     }
   }
 
-  public static final class InvalidExtensionRange extends RuntimeException implements
-      IProtoParserException {
+  public static final class InvalidExtensionRange extends RuntimeException
+      implements IProtoParserException {
     private static final long serialVersionUID = 1L;
     private static final String MESSAGE_FORMAT = "extension range[%s, %s] overlaps with others";
 
@@ -119,8 +119,8 @@ public final class Exceptions {
     }
   }
 
-  public static final class UnresolvedTypeNameException extends RuntimeException implements
-      IProtoParserException {
+  public static final class UnresolvedTypeNameException extends RuntimeException
+      implements IProtoParserException {
     private static final long serialVersionUID = 1L;
     private static final String MESSAGE_FORMAT = "The field %s has unresolvable type name: %s";
 
@@ -134,8 +134,8 @@ public final class Exceptions {
     }
   }
 
-  public static final class CircularProtoDependenciesException extends RuntimeException implements
-      IProtoParserException {
+  public static final class CircularProtoDependenciesException extends RuntimeException
+      implements IProtoParserException {
     private static final long serialVersionUID = 1L;
     private static final String MESSAGE_FORMAT =
         "these FileDescriprorProtos are circular or refer to nonexisting files: %s";
@@ -164,8 +164,8 @@ public final class Exceptions {
     private final Message proto;
     private final String description;
 
-    public DescriptorValidationRuntimeException(final String problemSymbolName,
-        final Message proto, final String description) {
+    public DescriptorValidationRuntimeException(
+        final String problemSymbolName, final Message proto, final String description) {
       super(problemSymbolName + ": " + description);
       this.problemSymbolName = problemSymbolName;
       this.proto = proto;

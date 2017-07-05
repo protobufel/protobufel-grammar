@@ -27,31 +27,33 @@
 
 package com.github.protobufel.grammar;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+import com.google.protobuf.Descriptors.FieldDescriptor;
+import com.google.protobuf.Message;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.TokenSource;
 
-import com.google.protobuf.Descriptors.FieldDescriptor;
-import com.google.protobuf.Message;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Utilities for dealing with comments, needed for the SourceInfo generation.
+ *
  * @author protobufel@gmail.com David Tesler
  */
 final class ParserUtils {
   private static final Pattern LINE_FINDER = Pattern.compile("\\n");
-  private static final Pattern BLOCK_COMMENT_PROTO_STRIPPER = Pattern.compile(
-      "^[\\s&&[^\\n]]*(?:[*]|[\\s&&[^\\n\\r]]|\\r(?=.))", Pattern.MULTILINE | Pattern.UNIX_LINES);
+  private static final Pattern BLOCK_COMMENT_PROTO_STRIPPER =
+      Pattern.compile(
+          "^[\\s&&[^\\n]]*(?:[*]|[\\s&&[^\\n\\r]]|\\r(?=.))",
+          Pattern.MULTILINE | Pattern.UNIX_LINES);
 
   private ParserUtils() {}
 
   /**
    * Returns the block comment body stripped of leading whitespace and * in all but the first line,
    * and the block comments delimiters removed.
-   * 
+   *
    * @param blockComment a C-style block comment
    * @return the comment's body with all but the first line specially trimmed
    */
@@ -62,7 +64,7 @@ final class ParserUtils {
 
   /**
    * Gets a zero-based line count of text.
-   * 
+   *
    * @param text a string in which to count lines
    * @return a number of {@code \n} new lines in the text
    */

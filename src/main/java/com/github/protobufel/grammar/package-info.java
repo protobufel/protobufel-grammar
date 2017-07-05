@@ -26,11 +26,12 @@
 //
 
 /**
- * Via its {@link ProtoFiles} class, provides the ability to :
+ * Via its {@link com.github.protobufel.grammar.ProtoFiles} class, provides the ability to :
+ *
  * <ol>
- * <li>parse .proto files off files, URI resources, and texts
- * <li>add FileDescriptorProto(-s) to build FileDecsriptor(-s) from  
- * <li>build the canonical FileDecsriptorProtos and FileDecsriptors based on the above input 
+ *   <li>parse .proto files off files, URI resources, and texts
+ *   <li>add FileDescriptorProto(-s) to build FileDecsriptor(-s) from
+ *   <li>build the canonical FileDecsriptorProtos and FileDecsriptors based on the above input
  * </ol>
  *
  * @see <a href="doc-files/Examples.java.txt">Examples.java</a>

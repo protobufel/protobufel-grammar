@@ -27,14 +27,13 @@
 
 package com.github.protobufel.grammar;
 
-import static org.assertj.core.api.Assertions.fail;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.instanceOf;
-
-import java.io.InputStream;
-import java.util.Collection;
-
+import com.github.protobufel.grammar.Exceptions.*;
+import com.github.protobufel.grammar.ParserUtils.CommonTokenStreamEx;
+import com.github.protobufel.grammar.ProtoParser.ProtoContext;
+import com.google.common.collect.ImmutableList;
+import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
+import com.google.protobuf.Descriptors.DescriptorValidationException;
+import com.google.protobuf.Descriptors.FileDescriptor;
 import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.junit.After;
@@ -48,23 +47,24 @@ import org.junit.runners.Parameterized.Parameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.protobufel.grammar.Exceptions.FieldInExtensionRangeException;
-import com.github.protobufel.grammar.Exceptions.InvalidExtensionRange;
-import com.github.protobufel.grammar.Exceptions.NonUniqueException;
-import com.github.protobufel.grammar.Exceptions.NonUniqueExtensionNumber;
-import com.github.protobufel.grammar.Exceptions.UnresolvedTypeNameException;
-import com.github.protobufel.grammar.ParserUtils.CommonTokenStreamEx;
-import com.github.protobufel.grammar.ProtoParser.ProtoContext;
-import com.google.common.collect.ImmutableList;
-import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
-import com.google.protobuf.Descriptors.DescriptorValidationException;
-import com.google.protobuf.Descriptors.FileDescriptor;
+import java.io.InputStream;
+import java.util.Collection;
+
+import static org.assertj.core.api.Assertions.fail;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.instanceOf;
 
 // TODO redo all tests and enable
 @Ignore
 @RunWith(Parameterized.class)
 public class ProtoFileParserValidationsTest {
   private static final Logger log = LoggerFactory.getLogger(ProtoFileParserValidationsTest.class);
+  @Parameter public String protoName;
+  @Parameter(1)
+  public Class<? extends RuntimeException> exception;
+  @Parameter(2)
+  public String exceptionExtra;
   private ParseTreeWalker walker;
   private ProtoFileParser protoParser;
   private ProtoContext tree;
@@ -72,32 +72,21 @@ public class ProtoFileParserValidationsTest {
 
   @Parameters(name = "{index}:{0}")
   public static Collection<Object[]> data() {
-    return ImmutableList.<Object[]>of(new Object[] {"NonUniqueFieldName1.proto",
-        NonUniqueException.class, "field name"}, new Object[] {"NonUniqueFieldNumber1.proto",
-        NonUniqueException.class, "field number"}, new Object[] {"FieldsInExtensionRange1.proto",
-        FieldInExtensionRangeException.class, ""}, new Object[] {"InvalidExtensionRange1.proto",
-        InvalidExtensionRange.class, ""}, new Object[] {"InvalidExtensionRange2.proto",
-        InvalidExtensionRange.class, ""}, new Object[] {"InvalidExtensionRange3.proto",
-        InvalidExtensionRange.class, ""}, new Object[] {"UnresolvedTypeName1.proto",
-        UnresolvedTypeNameException.class, ""}, new Object[] {"UnresolvedTypeName2.proto",
-        UnresolvedTypeNameException.class, ""}, new Object[] {"UnresolvedTypeName3.proto",
-        UnresolvedTypeNameException.class, ""}
-
-    , new Object[] {"UnresolvedTypeName4.proto", DescriptorValidationException.class, ""},
-    new Object[] {"UnresolvedTypeName5.proto", DescriptorValidationException.class, ""}
-
-    , new Object[] {"NonUniqueExtensionName1.proto", DescriptorValidationException.class, ""},
-    new Object[] {"NonUniqueExtensionNumber1.proto", NonUniqueExtensionNumber.class, ""});
+    return ImmutableList.<Object[]>of(
+        new Object[] {"NonUniqueFieldName1.proto", NonUniqueException.class, "field name"},
+        new Object[] {"NonUniqueFieldNumber1.proto", NonUniqueException.class, "field number"},
+        new Object[] {"FieldsInExtensionRange1.proto", FieldInExtensionRangeException.class, ""},
+        new Object[] {"InvalidExtensionRange1.proto", InvalidExtensionRange.class, ""},
+        new Object[] {"InvalidExtensionRange2.proto", InvalidExtensionRange.class, ""},
+        new Object[] {"InvalidExtensionRange3.proto", InvalidExtensionRange.class, ""},
+        new Object[] {"UnresolvedTypeName1.proto", UnresolvedTypeNameException.class, ""},
+        new Object[] {"UnresolvedTypeName2.proto", UnresolvedTypeNameException.class, ""},
+        new Object[] {"UnresolvedTypeName3.proto", UnresolvedTypeNameException.class, ""},
+        new Object[] {"UnresolvedTypeName4.proto", DescriptorValidationException.class, ""},
+        new Object[] {"UnresolvedTypeName5.proto", DescriptorValidationException.class, ""},
+        new Object[] {"NonUniqueExtensionName1.proto", DescriptorValidationException.class, ""},
+        new Object[] {"NonUniqueExtensionNumber1.proto", NonUniqueExtensionNumber.class, ""});
   }
-
-  @Parameter
-  public String protoName;
-
-  @Parameter(1)
-  public Class<? extends RuntimeException> exception;
-
-  @Parameter(2)
-  public String exceptionExtra;
 
   @Before
   public void setUp() throws Exception {
@@ -123,8 +112,10 @@ public class ProtoFileParserValidationsTest {
           (FileDescriptorProto.Builder) protoParser.getParsed().getProto();
       final FileDescriptor fileDescriptor =
           FileDescriptor.buildFrom(protoBuilder.build(), new FileDescriptor[0]);
-      fail(String.format("expected exception type %s with message containg '%s', but got none!",
-          exception, exceptionExtra));
+      fail(
+          String.format(
+              "expected exception type %s with message containg '%s', but got none!",
+              exception, exceptionExtra));
     } catch (final Exception e) {
       log.debug("expected exception with message '{}'", e.getMessage());
       assertThat(e, instanceOf(exception));

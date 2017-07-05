@@ -27,6 +27,4 @@
 
 package com.github.protobufel.grammar;
 
-public interface IntegrationTests {
-
-}
+public interface IntegrationTests {}

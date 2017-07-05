@@ -27,14 +27,11 @@
 
 package com.github.protobufel.grammar;
 
-import static com.github.protobufel.grammar.Misc.getProtocFileDescriptorProto;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-
-import java.io.InputStream;
-import java.util.Collection;
-import java.util.List;
-
+import com.github.protobufel.grammar.Misc.FieldTypeRefsMode;
+import com.github.protobufel.grammar.ParserUtils.CommonTokenStreamEx;
+import com.github.protobufel.grammar.ProtoParser.ProtoContext;
+import com.google.common.collect.ImmutableList;
+import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
 import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.junit.After;
@@ -48,11 +45,13 @@ import org.junit.runners.Parameterized.Parameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.protobufel.grammar.Misc.FieldTypeRefsMode;
-import com.github.protobufel.grammar.ParserUtils.CommonTokenStreamEx;
-import com.github.protobufel.grammar.ProtoParser.ProtoContext;
-import com.google.common.collect.ImmutableList;
-import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
+import java.io.InputStream;
+import java.util.Collection;
+import java.util.List;
+
+import static com.github.protobufel.grammar.Misc.getProtocFileDescriptorProto;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 
 // TODO implement SourceInfo, redo all tests and enable
 @Ignore
@@ -60,10 +59,13 @@ import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
 @RunWith(Parameterized.class)
 public class SourceInfoProtoFileParserTest {
   private static final Logger log = LoggerFactory.getLogger(SourceInfoProtoFileParserTest.class);
-  private static final List<String> TEST_PROTOS = ImmutableList.of("simple1.proto"
-  // , "unittest_custom_options"
-  // , "test1"
-      );
+  private static final List<String> TEST_PROTOS =
+      ImmutableList.of(
+          "simple1.proto"
+          // , "unittest_custom_options"
+          // , "test1"
+          );
+  @Parameter public String protoName;
   // @InjectMocks private SourceInfoProtoFileParser sourceInfoProtoFileParser;
   private ParseTreeWalker walker;
   private SourceInfoProtoFileParser protoParser;
@@ -81,9 +83,6 @@ public class SourceInfoProtoFileParserTest {
 
     return builder.build();
   }
-
-  @Parameter
-  public String protoName;
 
   @Before
   public void setUp() throws Exception {
@@ -117,16 +116,16 @@ public class SourceInfoProtoFileParserTest {
   /*
    * @Test public final void testGetParsed() throws Exception { // TODO throw new
    * RuntimeException("not yet implemented"); }
-   * 
+   *
    * @Test public final void testExitRegularImport() throws Exception { // TODO throw new
    * RuntimeException("not yet implemented"); }
-   * 
+   *
    * @Test public final void testExitPublicImport() throws Exception { // TODO throw new
    * RuntimeException("not yet implemented"); }
-   * 
+   *
    * @Test public final void testExitPackageStatement() throws Exception { // TODO throw new
    * RuntimeException("not yet implemented"); }
-   * 
+   *
    * @Test public final void testSourceInfoProtoFileParser() throws Exception { // TODO throw new
    * RuntimeException("not yet implemented"); }
    */

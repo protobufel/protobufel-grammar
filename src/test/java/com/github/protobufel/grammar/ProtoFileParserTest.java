@@ -27,14 +27,12 @@
 
 package com.github.protobufel.grammar;
 
-import static com.github.protobufel.grammar.Misc.getProtocFileDescriptorProto;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-
-import java.io.InputStream;
-import java.util.Collection;
-import java.util.List;
-
+import com.github.protobufel.grammar.Misc.FieldTypeRefsMode;
+import com.github.protobufel.grammar.ParserUtils.CommonTokenStreamEx;
+import com.github.protobufel.grammar.ProtoParser.ProtoContext;
+import com.google.common.collect.ImmutableList;
+import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
+import com.google.protobuf.Descriptors.FileDescriptor;
 import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.junit.After;
@@ -48,12 +46,13 @@ import org.junit.runners.Parameterized.Parameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.protobufel.grammar.Misc.FieldTypeRefsMode;
-import com.github.protobufel.grammar.ParserUtils.CommonTokenStreamEx;
-import com.github.protobufel.grammar.ProtoParser.ProtoContext;
-import com.google.common.collect.ImmutableList;
-import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
-import com.google.protobuf.Descriptors.FileDescriptor;
+import java.io.InputStream;
+import java.util.Collection;
+import java.util.List;
+
+import static com.github.protobufel.grammar.Misc.getProtocFileDescriptorProto;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 
 // TODO move the relevant tests from ProtoFilesTest and enable
 @Ignore
@@ -61,11 +60,16 @@ import com.google.protobuf.Descriptors.FileDescriptor;
 public class ProtoFileParserTest {
   private static final String PROTOC_SUBDIR = "protoc/";
   private static final Logger log = LoggerFactory.getLogger(ProtoFileParserTest.class);
-  private static final List<String> TEST_PROTOS = ImmutableList.of("MessageExtendee.proto"
-  // ,"simple1.proto"
-  // ,"test1.proto"
-  // , "unittest_custom_options.proto"
-      );
+  private static final List<String> TEST_PROTOS =
+      ImmutableList.of(
+          "MessageExtendee.proto"
+          // ,"simple1.proto"
+          // ,"test1.proto"
+          // , "unittest_custom_options.proto"
+          );
+  @Parameter public String protoName;
+  @Parameter(1)
+  public String subDir;
   private ParseTreeWalker walker;
   private ProtoFileParser protoParser;
   private ProtoContext tree;
@@ -82,12 +86,6 @@ public class ProtoFileParserTest {
 
     return builder.build();
   }
-
-  @Parameter
-  public String protoName;
-
-  @Parameter(1)
-  public String subDir;
 
   @Before
   public void setUp() throws Exception {

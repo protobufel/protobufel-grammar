@@ -27,9 +27,9 @@
 
 package com.github.protobufel.grammar;
 
-import java.io.File;
-
 import org.antlr.v4.gui.TestRig;
+
+import java.io.File;
 
 public class GUITestRig1 {
   private static final int ARGS_INPUT_FILE_INDEX = 0;
@@ -56,9 +56,17 @@ public class GUITestRig1 {
 
   public String[] setUp(final String grammarName, final String startRule, final String inputFile)
       throws Exception {
-    return new String[] {getClass().getPackage().getName() + "." + grammarName, startRule,
-        "-tokens", "-tree", "-gui", "-trace", "-diagnostics", "-SLL",
-        getResourceFileName(inputFile)};
+    return new String[] {
+      getClass().getPackage().getName() + "." + grammarName,
+      startRule,
+      "-tokens",
+      "-tree",
+      "-gui",
+      "-trace",
+      "-diagnostics",
+      "-SLL",
+      getResourceFileName(inputFile)
+    };
   }
 
   private String getResourceFileName(final String resource) {

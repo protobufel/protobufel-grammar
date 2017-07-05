@@ -27,37 +27,17 @@
 
 package com.github.protobufel.grammar;
 
-import static com.github.protobufel.grammar.ParserUtils.getTotalFieldCount;
-
-import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.tree.TerminalNode;
-
 import com.github.protobufel.grammar.ParserUtils.CommonTokenStreamEx;
-import com.github.protobufel.grammar.ProtoParser.CustomOptionContext;
-import com.github.protobufel.grammar.ProtoParser.CustomOptionNamePartContext;
-import com.github.protobufel.grammar.ProtoParser.CustomOptionValueContext;
-import com.github.protobufel.grammar.ProtoParser.EnumStatementContext;
-import com.github.protobufel.grammar.ProtoParser.FileOptionContext;
-import com.github.protobufel.grammar.ProtoParser.OptionScalarValueContext;
-import com.github.protobufel.grammar.ProtoParser.PackageStatementContext;
-import com.github.protobufel.grammar.ProtoParser.ProtoContext;
-import com.github.protobufel.grammar.ProtoParser.PublicImportContext;
-import com.github.protobufel.grammar.ProtoParser.RegularImportContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionCcGenericServicesContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionGoPackageContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionJavaGenerateEqualsAndHashContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionJavaGenericServicesContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionJavaMultipleFilesContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionJavaOuterClassnameContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionJavaPackageContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionOptimizeForContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionPyGenericServicesContext;
+import com.github.protobufel.grammar.ProtoParser.*;
 import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.DescriptorProtos.EnumDescriptorProto;
 import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
 import com.google.protobuf.DescriptorProtos.FileOptions;
 import com.google.protobuf.DescriptorProtos.UninterpretedOption;
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.tree.TerminalNode;
+
+import static com.github.protobufel.grammar.ParserUtils.getTotalFieldCount;
 
 /**
  * A parser from .proto into FileDescriptorProto with {@link DescriptorProtos.SourceCodeInfo}.
@@ -69,7 +49,6 @@ class SourceInfoProtoFileParser extends ProtoFileParser {
   private static boolean treatStandardOptionAsUninterpreted = true;
   private final LocationBuilder locationBuilder;
   private FileOptions.Builder fileOptionsBuilder; // FIXME add just to compile this file
-
 
   public SourceInfoProtoFileParser(final CommonTokenStreamEx tokens, final String protoName) {
     super(protoName);
@@ -107,8 +86,10 @@ class SourceInfoProtoFileParser extends ProtoFileParser {
     // .addPath(FileDescriptorProto.DEPENDENCY_FIELD_NUMBER)
     // .addPath(fileBuilder.getDependencyCount() - 1);
 
-    locationBuilder.addLocationForPrimitive(FileDescriptorProto.DEPENDENCY_FIELD_NUMBER)
-        .comments(ctx).setAllSpan(ctx.importPath());
+    locationBuilder
+        .addLocationForPrimitive(FileDescriptorProto.DEPENDENCY_FIELD_NUMBER)
+        .comments(ctx)
+        .setAllSpan(ctx.importPath());
   }
 
   @Override
@@ -125,10 +106,11 @@ class SourceInfoProtoFileParser extends ProtoFileParser {
     // .addPath(FileDescriptorProto.DEPENDENCY_FIELD_NUMBER)
     // .addPath(fileBuilder.getDependencyCount() - 1);
 
-    locationBuilder.addLocationForPrimitive(FileDescriptorProto.PUBLIC_DEPENDENCY_FIELD_NUMBER)
+    locationBuilder
+        .addLocationForPrimitive(FileDescriptorProto.PUBLIC_DEPENDENCY_FIELD_NUMBER)
         .setAllSpan((TerminalNode) ctx.getChild(1))
-
-        .addLocationForPrimitive(FileDescriptorProto.DEPENDENCY_FIELD_NUMBER).comments(ctx)
+        .addLocationForPrimitive(FileDescriptorProto.DEPENDENCY_FIELD_NUMBER)
+        .comments(ctx)
         .setAllSpan(ctx.importPath());
   }
 
@@ -140,7 +122,9 @@ class SourceInfoProtoFileParser extends ProtoFileParser {
     // .setAllSpan(ctx.packageName())
     // .addPath(FileDescriptorProto.PACKAGE_FIELD_NUMBER);
 
-    locationBuilder.addLocationForPrimitive(FileDescriptorProto.PACKAGE_FIELD_NUMBER).comments(ctx)
+    locationBuilder
+        .addLocationForPrimitive(FileDescriptorProto.PACKAGE_FIELD_NUMBER)
+        .comments(ctx)
         .setAllSpan(ctx.packageName());
   }
 
@@ -211,34 +195,48 @@ class SourceInfoProtoFileParser extends ProtoFileParser {
     if (ctx.customFileOption() != null) {
       final CustomOptionContext customOptionCtx = ctx.customFileOption().customOption();
 
-      locationBuilder.addLocation().setAllSpan(ctx)
+      locationBuilder
+          .addLocation()
+          .setAllSpan(ctx)
           .addPath(FileDescriptorProto.OPTIONS_FIELD_NUMBER);
 
       final int optionIndex =
-          (treatStandardOptionAsUninterpreted ? getTotalFieldCount(fileOptionsBuilder)
-              : fileOptionsBuilder.getUninterpretedOptionCount()) - 1;
+          (treatStandardOptionAsUninterpreted
+                  ? getTotalFieldCount(fileOptionsBuilder)
+                  : fileOptionsBuilder.getUninterpretedOptionCount())
+              - 1;
 
-      locationBuilder.addLocationClone().addPath(FileOptions.UNINTERPRETED_OPTION_FIELD_NUMBER)
+      locationBuilder
+          .addLocationClone()
+          .addPath(FileOptions.UNINTERPRETED_OPTION_FIELD_NUMBER)
           .addPath(optionIndex);
 
-      locationBuilder.addLocationClone().clearComments()
+      locationBuilder
+          .addLocationClone()
+          .clearComments()
           .addPath(UninterpretedOption.NAME_FIELD_NUMBER)
           .setAllSpan(customOptionCtx.customOptionName());
 
       int i = -1;
 
-      for (final CustomOptionNamePartContext namePart : customOptionCtx.customOptionName()
-          .customOptionNamePart()) {
-        locationBuilder.addLocation().addPath(FileDescriptorProto.OPTIONS_FIELD_NUMBER)
-            .addPath(FileOptions.UNINTERPRETED_OPTION_FIELD_NUMBER).addPath(optionIndex)
-            .addPath(UninterpretedOption.NAME_FIELD_NUMBER).addPath(++i).setAllSpan(namePart);
+      for (final CustomOptionNamePartContext namePart :
+          customOptionCtx.customOptionName().customOptionNamePart()) {
+        locationBuilder
+            .addLocation()
+            .addPath(FileDescriptorProto.OPTIONS_FIELD_NUMBER)
+            .addPath(FileOptions.UNINTERPRETED_OPTION_FIELD_NUMBER)
+            .addPath(optionIndex)
+            .addPath(UninterpretedOption.NAME_FIELD_NUMBER)
+            .addPath(++i)
+            .setAllSpan(namePart);
 
         locationBuilder
             .addLocationClone()
             .addPath(UninterpretedOption.NamePart.NAME_PART_FIELD_NUMBER)
             .setAllSpan(
-                namePart.customOptionNamePartId() == null ? namePart.identifier() : namePart
-                    .customOptionNamePartId());
+                namePart.customOptionNamePartId() == null
+                    ? namePart.identifier()
+                    : namePart.customOptionNamePartId());
       }
 
       // customOption value locations: can be scalar or aggregate!
@@ -267,48 +265,72 @@ class SourceInfoProtoFileParser extends ProtoFileParser {
         }
       }
 
-      locationBuilder.addLocation().addPath(FileDescriptorProto.OPTIONS_FIELD_NUMBER)
-          .addPath(FileOptions.UNINTERPRETED_OPTION_FIELD_NUMBER).addPath(optionIndex)
-          .addPath(valuePath).setAllSpan(customOptionValue);
+      locationBuilder
+          .addLocation()
+          .addPath(FileDescriptorProto.OPTIONS_FIELD_NUMBER)
+          .addPath(FileOptions.UNINTERPRETED_OPTION_FIELD_NUMBER)
+          .addPath(optionIndex)
+          .addPath(valuePath)
+          .setAllSpan(customOptionValue);
 
       // should the aggregate locations be added here? BTW, protoc fails on aggregates!
     }
   }
 
-  private void doStandardOptionSource(final StandardFileOptionContext ctx,
-      final int customOptionValueType) {
+  private void doStandardOptionSource(
+      final StandardFileOptionContext ctx, final int customOptionValueType) {
     final FileOptionContext parentCtx = (FileOptionContext) ctx.getParent();
 
-    locationBuilder.addLocation().setAllSpan(parentCtx)
+    locationBuilder
+        .addLocation()
+        .setAllSpan(parentCtx)
         .addPath(FileDescriptorProto.OPTIONS_FIELD_NUMBER);
 
     if (treatStandardOptionAsUninterpreted) {
       final int optionIndex = getTotalFieldCount(fileOptionsBuilder) - 1;
 
-      locationBuilder.addLocation().comments(parentCtx)
+      locationBuilder
+          .addLocation()
+          .comments(parentCtx)
           .addPath(FileDescriptorProto.OPTIONS_FIELD_NUMBER)
-          .addPath(FileOptions.UNINTERPRETED_OPTION_FIELD_NUMBER).addPath(optionIndex)
+          .addPath(FileOptions.UNINTERPRETED_OPTION_FIELD_NUMBER)
+          .addPath(optionIndex)
           .setAllSpan(parentCtx);
 
-      locationBuilder.addLocation().addPath(FileDescriptorProto.OPTIONS_FIELD_NUMBER)
-          .addPath(FileOptions.UNINTERPRETED_OPTION_FIELD_NUMBER).addPath(optionIndex)
+      locationBuilder
+          .addLocation()
+          .addPath(FileDescriptorProto.OPTIONS_FIELD_NUMBER)
+          .addPath(FileOptions.UNINTERPRETED_OPTION_FIELD_NUMBER)
+          .addPath(optionIndex)
           .addPath(UninterpretedOption.NAME_FIELD_NUMBER)
           .setAllSpan((TerminalNode) ctx.getChild(0));
 
-      locationBuilder.addLocation().addPath(FileDescriptorProto.OPTIONS_FIELD_NUMBER)
-          .addPath(FileOptions.UNINTERPRETED_OPTION_FIELD_NUMBER).addPath(optionIndex)
-          .addPath(UninterpretedOption.NAME_FIELD_NUMBER).addPath(0)
+      locationBuilder
+          .addLocation()
+          .addPath(FileDescriptorProto.OPTIONS_FIELD_NUMBER)
+          .addPath(FileOptions.UNINTERPRETED_OPTION_FIELD_NUMBER)
+          .addPath(optionIndex)
+          .addPath(UninterpretedOption.NAME_FIELD_NUMBER)
+          .addPath(0)
           .setAllSpan((TerminalNode) ctx.getChild(0));
 
-      locationBuilder.addLocation().addPath(FileDescriptorProto.OPTIONS_FIELD_NUMBER)
-          .addPath(FileOptions.UNINTERPRETED_OPTION_FIELD_NUMBER).addPath(optionIndex)
-          .addPath(UninterpretedOption.NAME_FIELD_NUMBER).addPath(0)
+      locationBuilder
+          .addLocation()
+          .addPath(FileDescriptorProto.OPTIONS_FIELD_NUMBER)
+          .addPath(FileOptions.UNINTERPRETED_OPTION_FIELD_NUMBER)
+          .addPath(optionIndex)
+          .addPath(UninterpretedOption.NAME_FIELD_NUMBER)
+          .addPath(0)
           .addPath(UninterpretedOption.NamePart.NAME_PART_FIELD_NUMBER)
           .setAllSpan((TerminalNode) ctx.getChild(0));
 
-      locationBuilder.addLocation().addPath(FileDescriptorProto.OPTIONS_FIELD_NUMBER)
-          .addPath(FileOptions.UNINTERPRETED_OPTION_FIELD_NUMBER).addPath(optionIndex)
-          .addPath(customOptionValueType).setAllSpan(ctx.getChild(2));
+      locationBuilder
+          .addLocation()
+          .addPath(FileDescriptorProto.OPTIONS_FIELD_NUMBER)
+          .addPath(FileOptions.UNINTERPRETED_OPTION_FIELD_NUMBER)
+          .addPath(optionIndex)
+          .addPath(customOptionValueType)
+          .setAllSpan(ctx.getChild(2));
     } else {
       locationBuilder
           .addLocation()
@@ -325,9 +347,12 @@ class SourceInfoProtoFileParser extends ProtoFileParser {
   @Override
   public void enterEnumStatement(final EnumStatementContext ctx) {
     super.enterEnumStatement(ctx);
-    locationBuilder.addEnumLocation().comments(ctx).setAllSpan(ctx)
-
-    .addLocationForPrimitive(EnumDescriptorProto.NAME_FIELD_NUMBER).setAllSpan(ctx.identifier());
+    locationBuilder
+        .addEnumLocation()
+        .comments(ctx)
+        .setAllSpan(ctx)
+        .addLocationForPrimitive(EnumDescriptorProto.NAME_FIELD_NUMBER)
+        .setAllSpan(ctx.identifier());
   }
 
   @Override
@@ -342,20 +367,23 @@ class SourceInfoProtoFileParser extends ProtoFileParser {
   private void doCustomOption(final CustomOptionContext ctx, final ParserRuleContext parentCtx) {
     locationBuilder.addLocation().setAllSpan(parentCtx);
 
+    locationBuilder
+        .addOptionLocation()
+        .setAllSpan(parentCtx)
+        .comments(parentCtx)
+        .addOptionNameLocation()
+        .setAllSpan(ctx.customOptionName());
 
-    locationBuilder.addOptionLocation().setAllSpan(parentCtx).comments(parentCtx)
-
-    .addOptionNameLocation().setAllSpan(ctx.customOptionName());
-
-    for (final CustomOptionNamePartContext namePart : ctx.customOptionName().customOptionNamePart()) {
+    for (final CustomOptionNamePartContext namePart :
+        ctx.customOptionName().customOptionNamePart()) {
       locationBuilder
           .addLocationForPrimitive(UninterpretedOption.NAME_FIELD_NUMBER)
           .setAllSpan(namePart)
-
           .addLocationForPrimitive(UninterpretedOption.NamePart.NAME_PART_FIELD_NUMBER)
           .setAllSpan(
-              namePart.customOptionNamePartId() == null ? namePart.identifier() : namePart
-                  .customOptionNamePartId());
+              namePart.customOptionNamePartId() == null
+                  ? namePart.identifier()
+                  : namePart.customOptionNamePartId());
     }
 
     // exit OptionName scope
@@ -387,32 +415,36 @@ class SourceInfoProtoFileParser extends ProtoFileParser {
       }
     }
 
-    locationBuilder.addLocationForPrimitive(valuePath).setAllSpan(customOptionValue)
+    locationBuilder
+        .addLocationForPrimitive(valuePath)
+        .setAllSpan(customOptionValue)
 
-    // exit Option scope
+        // exit Option scope
         .popScope();
 
     // should the aggregate locations be added here? BTW, protoc fails on
     // aggregates!
   }
 
-  private void doStandardOption(final ParserRuleContext ctx, final ParserRuleContext parentCtx,
+  private void doStandardOption(
+      final ParserRuleContext ctx,
+      final ParserRuleContext parentCtx,
       final int customOptionValueType) {
     locationBuilder.addOptionLocation().setAllSpan(parentCtx).comments(parentCtx);
 
     if (treatStandardOptionAsUninterpreted) {
-      locationBuilder.addOptionNameLocation().setAllSpan((TerminalNode) ctx.getChild(0))
-
-      .addLocationForPrimitive(UninterpretedOption.NAME_FIELD_NUMBER)
+      locationBuilder
+          .addOptionNameLocation()
           .setAllSpan((TerminalNode) ctx.getChild(0))
-
+          .addLocationForPrimitive(UninterpretedOption.NAME_FIELD_NUMBER)
+          .setAllSpan((TerminalNode) ctx.getChild(0))
           .addLocationForPrimitive(UninterpretedOption.NamePart.NAME_PART_FIELD_NUMBER)
           .setAllSpan((TerminalNode) ctx.getChild(0))
 
           // exit OptionName scope
           .popScope()
-
-          .addLocationForPrimitive(customOptionValueType).setAllSpan(ctx.getChild(2))
+          .addLocationForPrimitive(customOptionValueType)
+          .setAllSpan(ctx.getChild(2))
 
           // exit Option scope
           .popScope();

@@ -27,11 +27,6 @@
 
 package com.github.protobufel.grammar;
 
-import static com.github.protobufel.grammar.ParserUtils.getLineCount;
-import static com.github.protobufel.grammar.ParserUtils.getTrimmedBlockCommentContent;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.is;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -42,13 +37,17 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.github.protobufel.grammar.ParserUtils.getLineCount;
+import static com.github.protobufel.grammar.ParserUtils.getTrimmedBlockCommentContent;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.is;
+
 @RunWith(JUnit4.class)
 public class UtilsTest {
   @SuppressWarnings("unused")
   private static final Logger log = LoggerFactory.getLogger(UtilsTest.class);
 
-  @Rule
-  public ErrorCollector errors = new ErrorCollector();
+  @Rule public ErrorCollector errors = new ErrorCollector();
 
   @Before
   public void setUp() throws Exception {}

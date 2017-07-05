@@ -27,21 +27,13 @@
 
 package com.github.protobufel.grammar;
 
-import static com.github.protobufel.grammar.Misc.getFileDescriptorProtos;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.regex.Pattern;
-
+import com.github.protobufel.grammar.ErrorListeners.IBaseProtoErrorListener;
+import com.github.protobufel.grammar.ErrorListeners.LogProtoErrorListener;
+import com.github.protobufel.grammar.Misc.FieldTypeRefsMode;
+import com.github.protobufel.grammar.Misc.FileDescriptorByNameComparator;
+import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
+import difflib.*;
+import difflib.DiffRow.Tag;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 import org.assertj.core.api.JUnitSoftAssertions;
@@ -53,49 +45,43 @@ import org.junit.rules.ExpectedException;
 import org.junit.rules.RuleChain;
 import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.protobufel.grammar.ErrorListeners.IBaseProtoErrorListener;
-import com.github.protobufel.grammar.ErrorListeners.LogProtoErrorListener;
-import com.github.protobufel.grammar.Misc.FieldTypeRefsMode;
-import com.github.protobufel.grammar.Misc.FileDescriptorByNameComparator;
-import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
+import java.io.File;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Pattern;
 
-import difflib.DiffRow;
-import difflib.DiffRow.Tag;
-import difflib.DiffRowGenerator;
-import difflib.DiffUtils;
-import difflib.Patch;
-import difflib.PatchFailedException;
+import static com.github.protobufel.grammar.Misc.getFileDescriptorProtos;
+import static org.mockito.Matchers.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 //@RunWith(JUnit4.class)
 @RunWith(MockitoJUnitRunner.Silent.class)
 public class DiffWithOriginalsTest {
+  public static final int MAX_FIELD_NUMBER = 536870912;
   @SuppressWarnings("unused")
   private static final Logger log = LoggerFactory.getLogger(DiffWithOriginalsTest.class);
-  public static final int MAX_FIELD_NUMBER = 536870912;
   private static final String PROTOBUF_ORIGINAL_SUBDIR = "protobuf-original/";
 
   private static final Pattern ALL_PROTOS_PATTERN = Pattern.compile(".*\\.proto");
-  private File baseDir;
+  public final ExpectedException expected = ExpectedException.none();
+  public final JUnitSoftAssertions softly = new JUnitSoftAssertions();
+  @Rule public final TestRule chain = RuleChain.outerRule(expected).around(softly);
   private final Pattern filePattern = ALL_PROTOS_PATTERN;
+  private File baseDir;
   // private List<String> files;
-  @Mock
-  private IBaseProtoErrorListener mockErrorListener;
+  @Mock private IBaseProtoErrorListener mockErrorListener;
   private LogProtoErrorListener errorListener;
   private ProtoFiles.Builder filesBuilder;
   private List<FileDescriptorProto> protocFdProtos;
-
-  public final ExpectedException expected = ExpectedException.none();
-  public final JUnitSoftAssertions softly = new JUnitSoftAssertions();
-
-  @Rule
-  public final TestRule chain = RuleChain.outerRule(expected).around(softly);
 
   @SuppressWarnings("null")
   @Before
@@ -105,8 +91,12 @@ public class DiffWithOriginalsTest {
     filesBuilder = ProtoFiles.newBuilder(errorListener).setProtocCompatible(false);
     baseDir = new File(getClass().getResource(PROTOBUF_ORIGINAL_SUBDIR).toURI());
     protocFdProtos =
-        getFileDescriptorProtos(filePattern, false, FieldTypeRefsMode.AS_IS,
-            PROTOBUF_ORIGINAL_SUBDIR + "FileDescriptorSet", getClass());
+        getFileDescriptorProtos(
+            filePattern,
+            false,
+            FieldTypeRefsMode.AS_IS,
+            PROTOBUF_ORIGINAL_SUBDIR + "FileDescriptorSet",
+            getClass());
   }
 
   @After
@@ -119,27 +109,45 @@ public class DiffWithOriginalsTest {
 
     // when
     final List<FileDescriptorProto> actualProtoList =
-        filesBuilder.setCustomOptionsAsExtensions(false).setProtocCompatible(false)
-        .addFilesByGlob(baseDir, "**/*.proto").buildProtos(false);
+        filesBuilder
+            .setCustomOptionsAsExtensions(false)
+            .setProtocCompatible(false)
+            .addFilesByGlob(baseDir, "**/*.proto")
+            .buildProtos(false);
 
     // then
     // no errors logged!
-    verify(mockErrorListener, never()).validationError(anyInt(), anyInt(), anyString(),
-        any(RuntimeException.class));
-    verify(mockErrorListener, never()).syntaxError(any(Recognizer.class), any(), anyInt(),
-        anyInt(), anyString(), any(RecognitionException.class));
+    verify(mockErrorListener, never())
+        .validationError(anyInt(), anyInt(), anyString(), any(RuntimeException.class));
+    verify(mockErrorListener, never())
+        .syntaxError(
+            any(Recognizer.class),
+            any(),
+            anyInt(),
+            anyInt(),
+            anyString(),
+            any(RecognitionException.class));
 
     softly.assertThat(actualProtoList).as("check actualProtoList is not null").isNotNull();
-    softly.assertThat(actualProtoList).as("check actualProtoList without nulls")
-    .doesNotContainNull();
-    softly.assertThat(actualProtoList).as("check actualProtoList has no duplicates")
-    .extracting("package", "name").doesNotHaveDuplicates();
-    softly.assertThat(actualProtoList).as("check actualProtoList size")
-    .hasSameSizeAs(expectedProtoList);
+    softly
+        .assertThat(actualProtoList)
+        .as("check actualProtoList without nulls")
+        .doesNotContainNull();
+    softly
+        .assertThat(actualProtoList)
+        .as("check actualProtoList has no duplicates")
+        .extracting("package", "name")
+        .doesNotHaveDuplicates();
+    softly
+        .assertThat(actualProtoList)
+        .as("check actualProtoList size")
+        .hasSameSizeAs(expectedProtoList);
 
-    softly.assertThat(actualProtoList).as("check all protos' by name and package")
-    .usingElementComparatorOnFields("package", "name")
-    .containsOnlyElementsOf(expectedProtoList);
+    softly
+        .assertThat(actualProtoList)
+        .as("check all protos' by name and package")
+        .usingElementComparatorOnFields("package", "name")
+        .containsOnlyElementsOf(expectedProtoList);
 
     final List<FileDescriptorProto> sortedActualFds =
         FileDescriptorByNameComparator.of().immutableSortedCopy(actualProtoList);
@@ -152,8 +160,12 @@ public class DiffWithOriginalsTest {
     // log.debug("patch text {}", patch.getDeltas());
 
     final DiffRowGenerator diffBuilder =
-        new DiffRowGenerator.Builder().ignoreWhiteSpaces(false).ignoreBlankLines(false)
-            .columnWidth(132).showInlineDiffs(false).build();
+        new DiffRowGenerator.Builder()
+            .ignoreWhiteSpaces(false)
+            .ignoreBlankLines(false)
+            .columnWidth(132)
+            .showInlineDiffs(false)
+            .build();
     final List<DiffRow> diffRows = diffBuilder.generateDiffRows(actualLines, expectedLines);
     final List<DiffRow> diffList = new ArrayList<>();
 
@@ -165,11 +177,15 @@ public class DiffWithOriginalsTest {
 
     log.debug("diff rows {}", diffList);
 
-    softly.assertThat(patch.applyTo(actualLines)).as("check the patched")
-    .containsExactlyElementsOf(expectedLines);
+    softly
+        .assertThat(patch.applyTo(actualLines))
+        .as("check the patched")
+        .containsExactlyElementsOf(expectedLines);
 
-    softly.assertThat(patch.restore(expectedLines)).as("check the reverse patched")
-    .containsExactlyElementsOf(actualLines);
+    softly
+        .assertThat(patch.restore(expectedLines))
+        .as("check the reverse patched")
+        .containsExactlyElementsOf(actualLines);
 
     // final StringBuilder sb = new StringBuilder();
     //

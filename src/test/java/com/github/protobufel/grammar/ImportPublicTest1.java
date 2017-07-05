@@ -27,17 +27,10 @@
 
 package com.github.protobufel.grammar;
 
-import static com.github.protobufel.grammar.Misc.getProtocFileDescriptorProto;
-import static com.github.protobufel.grammar.Misc.getProtocFileDescriptorProtos;
-import static com.github.protobufel.grammar.Misc.FieldTypeRefsMode.RELATIVE_TO_PARENT;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.nullValue;
-
-import java.io.File;
-import java.util.List;
-import java.util.regex.Pattern;
-
+import com.github.protobufel.grammar.Misc.FieldTypeRefsMode;
+import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
+import com.google.protobuf.DescriptorProtos.FileDescriptorProto.Builder;
+import com.google.protobuf.Descriptors.FileDescriptor;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -46,10 +39,16 @@ import org.mockito.runners.MockitoJUnitRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.protobufel.grammar.Misc.FieldTypeRefsMode;
-import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
-import com.google.protobuf.DescriptorProtos.FileDescriptorProto.Builder;
-import com.google.protobuf.Descriptors.FileDescriptor;
+import java.io.File;
+import java.util.List;
+import java.util.regex.Pattern;
+
+import static com.github.protobufel.grammar.Misc.FieldTypeRefsMode.RELATIVE_TO_PARENT;
+import static com.github.protobufel.grammar.Misc.getProtocFileDescriptorProto;
+import static com.github.protobufel.grammar.Misc.getProtocFileDescriptorProtos;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
 
 // public class ProtoFilesTest extends MockitoBase {
 @RunWith(MockitoJUnitRunner.class)
@@ -58,9 +57,9 @@ public class ImportPublicTest1 {
   private static final String PROTOC_SUBDIR = "protoc/";
   private static final String MAIN_TEST_RESOURCES_DIR = "";
   private static final Pattern ALL_PROTOS_PATTERN = Pattern.compile(".+?\\.proto");
+  private final Pattern filePattern = ALL_PROTOS_PATTERN;
   private File baseDir;
   private File mainBasedir;
-  private final Pattern filePattern = ALL_PROTOS_PATTERN;
   private List<FileDescriptorProto> protocFdProtos;
 
   @Before
@@ -73,8 +72,8 @@ public class ImportPublicTest1 {
   @Test
   public void viewProtos() throws Exception {
     protocFdProtos =
-        getProtocFileDescriptorProtos(Pattern.compile("nonTree.+?\\.proto"), false,
-            FieldTypeRefsMode.AS_IS);
+        getProtocFileDescriptorProtos(
+            Pattern.compile("nonTree.+?\\.proto"), false, FieldTypeRefsMode.AS_IS);
 
     for (final FileDescriptorProto proto : protocFdProtos) {
       log.info(proto.toString());
@@ -123,7 +122,6 @@ public class ImportPublicTest1 {
     final Builder parentBuilder = FileDescriptorProto.newBuilder(originalParent1);
     parentBuilder.getMessageTypeBuilder(0).getFieldBuilder(2).clearType().setTypeName("Child2");
     final FileDescriptorProto parent1 = parentBuilder.build();
-
 
     final FileDescriptor fileChild2 = FileDescriptor.buildFrom(child2, new FileDescriptor[0]);
     final FileDescriptor fileParent2 =

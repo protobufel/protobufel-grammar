@@ -34,8 +34,8 @@ import com.google.protobuf.Descriptors.FileDescriptor;
 final class DescriptorFactory {
   private DescriptorFactory() {}
 
-  public static Descriptor findDescriptor(final FileDescriptor fileDescriptor,
-      final String messageTypeName) {
+  public static Descriptor findDescriptor(
+      final FileDescriptor fileDescriptor, final String messageTypeName) {
     if (messageTypeName == null || fileDescriptor == null) {
       throw new NullPointerException();
     }
@@ -53,7 +53,8 @@ final class DescriptorFactory {
     return null;
   }
 
-  public static Descriptor findDescriptor(final Descriptor descriptor, final String messageTypeName) {
+  public static Descriptor findDescriptor(
+      final Descriptor descriptor, final String messageTypeName) {
     for (final Descriptor child : descriptor.getNestedTypes()) {
       if (messageTypeName.equals(child.getFullName())) {
         return descriptor;

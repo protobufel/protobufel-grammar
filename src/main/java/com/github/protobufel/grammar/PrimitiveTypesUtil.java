@@ -32,17 +32,17 @@
 
 package com.github.protobufel.grammar;
 
-import java.io.IOException;
-import java.math.BigInteger;
-
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Descriptors.EnumValueDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.TextFormat;
 
+import java.io.IOException;
+import java.math.BigInteger;
+
 /**
  * Utilities dealing with non-message types; based on {@link TextFormat} code.
- * 
+ *
  * @author protobufel@gmail.com David Tesler
  */
 final class PrimitiveTypesUtil {
@@ -66,7 +66,7 @@ final class PrimitiveTypesUtil {
     for (int i = 0; i < input.size(); i++) {
       final byte b = input.byteAt(i);
       switch (b) {
-      // Java does not recognize \a or \v, apparently.
+          // Java does not recognize \a or \v, apparently.
         case 0x07:
           builder.append("\\a");
           break;
@@ -120,8 +120,8 @@ final class PrimitiveTypesUtil {
     for (int i = 0; i < input.size(); i++) {
       final byte b = input.byteAt(i);
       switch (b) {
-      // Java does not recognize \a or \v, apparently.
-      // modified to conform to the protoc handling of default bytes type values
+          // Java does not recognize \a or \v, apparently.
+          // modified to conform to the protoc handling of default bytes type values
         case 0x07:
           builder.append("\\007");
           break;
@@ -169,7 +169,6 @@ final class PrimitiveTypesUtil {
     }
     return builder.toString();
   }
-
 
   /**
    * Un-escape a byte sequence as escaped using {@link #escapeBytes(ByteString)}. Two-digit hex
@@ -258,8 +257,8 @@ final class PrimitiveTypesUtil {
                 break;
 
               default:
-                throw new InvalidEscapeSequenceException("Invalid escape sequence: '\\" + (char) c
-                    + '\'');
+                throw new InvalidEscapeSequenceException(
+                    "Invalid escape sequence: '\\" + (char) c + '\'');
             }
           }
         } else {
@@ -272,18 +271,6 @@ final class PrimitiveTypesUtil {
     }
 
     return ByteString.copyFrom(result, 0, pos);
-  }
-
-  /**
-   * Thrown by {@link TextFormat#unescapeBytes} and {@link TextFormat#unescapeText} when an invalid
-   * escape sequence is seen.
-   */
-  static class InvalidEscapeSequenceException extends IOException {
-    private static final long serialVersionUID = -8164033650142593304L;
-
-    InvalidEscapeSequenceException(final String description) {
-      super(description);
-    }
   }
 
   /**
@@ -328,38 +315,38 @@ final class PrimitiveTypesUtil {
   }
 
   /**
-   * Parse a 32-bit signed integer from the text. Unlike the Java standard
-   * {@code Integer.parseInt()}, this function recognizes the prefixes "0x" and "0" to signify
-   * hexadecimal and octal numbers, respectively.
+   * Parse a 32-bit signed integer from the text. Unlike the Java standard {@code
+   * Integer.parseInt()}, this function recognizes the prefixes "0x" and "0" to signify hexadecimal
+   * and octal numbers, respectively.
    */
   static int parseInt32(final String text) throws NumberFormatException {
     return (int) parseInteger(text, true, false);
   }
 
   /**
-   * Parse a 32-bit unsigned integer from the text. Unlike the Java standard
-   * {@code Integer.parseInt()}, this function recognizes the prefixes "0x" and "0" to signify
-   * hexadecimal and octal numbers, respectively. The result is coerced to a (signed) {@code int}
-   * when returned since Java has no unsigned integer type.
+   * Parse a 32-bit unsigned integer from the text. Unlike the Java standard {@code
+   * Integer.parseInt()}, this function recognizes the prefixes "0x" and "0" to signify hexadecimal
+   * and octal numbers, respectively. The result is coerced to a (signed) {@code int} when returned
+   * since Java has no unsigned integer type.
    */
   static int parseUInt32(final String text) throws NumberFormatException {
     return (int) parseInteger(text, false, false);
   }
 
   /**
-   * Parse a 64-bit signed integer from the text. Unlike the Java standard
-   * {@code Integer.parseInt()}, this function recognizes the prefixes "0x" and "0" to signify
-   * hexadecimal and octal numbers, respectively.
+   * Parse a 64-bit signed integer from the text. Unlike the Java standard {@code
+   * Integer.parseInt()}, this function recognizes the prefixes "0x" and "0" to signify hexadecimal
+   * and octal numbers, respectively.
    */
   static long parseInt64(final String text) throws NumberFormatException {
     return parseInteger(text, true, true);
   }
 
   /**
-   * Parse a 64-bit unsigned integer from the text. Unlike the Java standard
-   * {@code Integer.parseInt()}, this function recognizes the prefixes "0x" and "0" to signify
-   * hexadecimal and octal numbers, respectively. The result is coerced to a (signed) {@code long}
-   * when returned since Java has no unsigned long type.
+   * Parse a 64-bit unsigned integer from the text. Unlike the Java standard {@code
+   * Integer.parseInt()}, this function recognizes the prefixes "0x" and "0" to signify hexadecimal
+   * and octal numbers, respectively. The result is coerced to a (signed) {@code long} when returned
+   * since Java has no unsigned long type.
    */
   static long parseUInt64(final String text) throws NumberFormatException {
     return parseInteger(text, false, true);
@@ -402,13 +389,13 @@ final class PrimitiveTypesUtil {
       if (!isLong) {
         if (isSigned) {
           if (result > Integer.MAX_VALUE || result < Integer.MIN_VALUE) {
-            throw new NumberFormatException("Number out of range for 32-bit signed integer: "
-                + text);
+            throw new NumberFormatException(
+                "Number out of range for 32-bit signed integer: " + text);
           }
         } else {
           if (result >= 1L << 32 || result < 0) {
-            throw new NumberFormatException("Number out of range for 32-bit unsigned integer: "
-                + text);
+            throw new NumberFormatException(
+                "Number out of range for 32-bit unsigned integer: " + text);
           }
         }
       }
@@ -422,25 +409,25 @@ final class PrimitiveTypesUtil {
       if (!isLong) {
         if (isSigned) {
           if (bigValue.bitLength() > 31) {
-            throw new NumberFormatException("Number out of range for 32-bit signed integer: "
-                + text);
+            throw new NumberFormatException(
+                "Number out of range for 32-bit signed integer: " + text);
           }
         } else {
           if (bigValue.bitLength() > 32) {
-            throw new NumberFormatException("Number out of range for 32-bit unsigned integer: "
-                + text);
+            throw new NumberFormatException(
+                "Number out of range for 32-bit unsigned integer: " + text);
           }
         }
       } else {
         if (isSigned) {
           if (bigValue.bitLength() > 63) {
-            throw new NumberFormatException("Number out of range for 64-bit signed integer: "
-                + text);
+            throw new NumberFormatException(
+                "Number out of range for 64-bit signed integer: " + text);
           }
         } else {
           if (bigValue.bitLength() > 64) {
-            throw new NumberFormatException("Number out of range for 64-bit unsigned integer: "
-                + text);
+            throw new NumberFormatException(
+                "Number out of range for 64-bit unsigned integer: " + text);
           }
         }
       }
@@ -455,23 +442,22 @@ final class PrimitiveTypesUtil {
     return input.replace("\\\"", "\"").replace("\\\\", "\\");
   }
 
-  public static String getSimpleFieldValue(final FieldDescriptor field, final Object value)
-      throws IOException {
+  public static String getSimpleFieldValue(final FieldDescriptor field, final Object value) {
     switch (field.getType()) {
       case INT32:
       case SINT32:
       case SFIXED32:
-        return ((Integer) value).toString();
+        return value.toString();
       case INT64:
       case SINT64:
       case SFIXED64:
-        return ((Long) value).toString();
+        return value.toString();
       case BOOL:
-        return ((Boolean) value).toString();
+        return value.toString();
       case FLOAT:
-        return ((Float) value).toString();
+        return value.toString();
       case DOUBLE:
-        return ((Double) value).toString();
+        return value.toString();
       case UINT32:
       case FIXED32:
         return TextFormat.unsignedToString((Integer) value);
@@ -491,6 +477,18 @@ final class PrimitiveTypesUtil {
         return ((EnumValueDescriptor) value).getName();
       default:
         return null;
+    }
+  }
+
+  /**
+   * Thrown by {@link TextFormat#unescapeBytes} and {@link TextFormat#unescapeText} when an invalid
+   * escape sequence is seen.
+   */
+  static class InvalidEscapeSequenceException extends IOException {
+    private static final long serialVersionUID = -8164033650142593304L;
+
+    InvalidEscapeSequenceException(final String description) {
+      super(description);
     }
   }
 }

@@ -27,120 +27,32 @@
 
 package com.github.protobufel.grammar;
 
-import static com.github.protobufel.grammar.PrimitiveTypesUtil.protoEscapeBytes;
-import static com.github.protobufel.grammar.PrimitiveTypesUtil.unescapeBytes;
-import static com.github.protobufel.grammar.PrimitiveTypesUtil.unescapeText;
-
-import java.util.AbstractMap.SimpleEntry;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.IdentityHashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-
+import com.github.protobufel.grammar.ErrorListeners.ConsoleProtoErrorListener;
+import com.github.protobufel.grammar.ErrorListeners.IBaseProtoErrorListener;
+import com.github.protobufel.grammar.ErrorListeners.IProtoErrorListener;
+import com.github.protobufel.grammar.Exceptions.*;
+import com.github.protobufel.grammar.PrimitiveTypesUtil.*;
+import com.github.protobufel.grammar.ProtoParser.*;
+import com.github.protobufel.grammar.SymbolScopes.NameContext;
+import com.google.protobuf.ByteString;
+import com.google.protobuf.DescriptorProtos;
+import com.google.protobuf.DescriptorProtos.DescriptorProto.ExtensionRange;
+import com.google.protobuf.DescriptorProtos.*;
+import com.google.protobuf.DescriptorProtos.FieldDescriptorProto.Type;
+import com.google.protobuf.DescriptorProtos.FileOptions.OptimizeMode;
+import com.google.protobuf.Descriptors.Descriptor;
+import com.google.protobuf.Descriptors.EnumDescriptor;
+import com.google.protobuf.Descriptors.FileDescriptor;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.RuleNode;
 
-import com.github.protobufel.grammar.ErrorListeners.ConsoleProtoErrorListener;
-import com.github.protobufel.grammar.ErrorListeners.IBaseProtoErrorListener;
-import com.github.protobufel.grammar.ErrorListeners.IProtoErrorListener;
-import com.github.protobufel.grammar.Exceptions.FieldInExtensionRangeException;
-import com.github.protobufel.grammar.Exceptions.InvalidExtensionRange;
-import com.github.protobufel.grammar.Exceptions.NonUniqueException;
-import com.github.protobufel.grammar.Exceptions.NonUniqueExtensionNumber;
-import com.github.protobufel.grammar.Exceptions.UnresolvedTypeNameException;
-import com.github.protobufel.grammar.PrimitiveTypesUtil.InvalidEscapeSequenceException;
-import com.github.protobufel.grammar.ProtoParser.BoolFieldOptionContext;
-import com.github.protobufel.grammar.ProtoParser.BytesFieldOptionContext;
-import com.github.protobufel.grammar.ProtoParser.CustomOptionContext;
-import com.github.protobufel.grammar.ProtoParser.CustomOptionNamePartContext;
-import com.github.protobufel.grammar.ProtoParser.DoubleFieldOptionContext;
-import com.github.protobufel.grammar.ProtoParser.EnumDefaultFieldContext;
-import com.github.protobufel.grammar.ProtoParser.EnumDefaultFieldOptionContext;
-import com.github.protobufel.grammar.ProtoParser.EnumFieldContext;
-import com.github.protobufel.grammar.ProtoParser.EnumStatementContext;
-import com.github.protobufel.grammar.ProtoParser.ExtendContext;
-import com.github.protobufel.grammar.ProtoParser.ExtensionRangeEndContext;
-import com.github.protobufel.grammar.ProtoParser.ExtensionsContext;
-import com.github.protobufel.grammar.ProtoParser.FieldContext;
-import com.github.protobufel.grammar.ProtoParser.FieldNumberContext;
-import com.github.protobufel.grammar.ProtoParser.Fixed32FieldOptionContext;
-import com.github.protobufel.grammar.ProtoParser.Fixed64FieldOptionContext;
-import com.github.protobufel.grammar.ProtoParser.FloatFieldOptionContext;
-import com.github.protobufel.grammar.ProtoParser.GroupContext;
-import com.github.protobufel.grammar.ProtoParser.Int32FieldOptionContext;
-import com.github.protobufel.grammar.ProtoParser.Int64FieldOptionContext;
-import com.github.protobufel.grammar.ProtoParser.MessageContext;
-import com.github.protobufel.grammar.ProtoParser.MethodStatementContext;
-import com.github.protobufel.grammar.ProtoParser.OneofFieldContext;
-import com.github.protobufel.grammar.ProtoParser.OneofGroupContext;
-import com.github.protobufel.grammar.ProtoParser.OneofStatementContext;
-import com.github.protobufel.grammar.ProtoParser.OptionAggregateValueContext;
-import com.github.protobufel.grammar.ProtoParser.OptionAggregateValueFieldContext;
-import com.github.protobufel.grammar.ProtoParser.OptionScalarValueContext;
-import com.github.protobufel.grammar.ProtoParser.OptionalScalarFieldContext;
-import com.github.protobufel.grammar.ProtoParser.ProtoContext;
-import com.github.protobufel.grammar.ProtoParser.PublicImportContext;
-import com.github.protobufel.grammar.ProtoParser.RegularImportContext;
-import com.github.protobufel.grammar.ProtoParser.ServiceContext;
-import com.github.protobufel.grammar.ProtoParser.Sfixed32FieldOptionContext;
-import com.github.protobufel.grammar.ProtoParser.Sfixed64FieldOptionContext;
-import com.github.protobufel.grammar.ProtoParser.Sint32FieldOptionContext;
-import com.github.protobufel.grammar.ProtoParser.Sint64FieldOptionContext;
-import com.github.protobufel.grammar.ProtoParser.StandardEnumOptionAllowAliasContext;
-import com.github.protobufel.grammar.ProtoParser.StandardEnumOptionDeprecatedContext;
-import com.github.protobufel.grammar.ProtoParser.StandardEnumValueOptionDeprecatedContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFieldOptionCTypeOptionContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFieldOptionDeprecatedContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFieldOptionExperimentalMapKeyContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFieldOptionLazyContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFieldOptionPackedContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFieldOptionWeakContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionCcGenericServicesContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionDeprecatedContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionGoPackageContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionJavaGenerateEqualsAndHashContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionJavaGenericServicesContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionJavaMultipleFilesContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionJavaOuterClassnameContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionJavaPackageContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionJavaStringCheckUtf8Context;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionOptimizeForContext;
-import com.github.protobufel.grammar.ProtoParser.StandardFileOptionPyGenericServicesContext;
-import com.github.protobufel.grammar.ProtoParser.StandardMessageOptionDeprecatedContext;
-import com.github.protobufel.grammar.ProtoParser.StandardMessageOptionMessageSetWireFormatContext;
-import com.github.protobufel.grammar.ProtoParser.StandardMessageOptionNoStandardDescriptorAccessorContext;
-import com.github.protobufel.grammar.ProtoParser.StandardMethodOptionDeprecatedContext;
-import com.github.protobufel.grammar.ProtoParser.StandardServiceOptionDeprecatedContext;
-import com.github.protobufel.grammar.ProtoParser.StringFieldOptionContext;
-import com.github.protobufel.grammar.ProtoParser.Uint32FieldOptionContext;
-import com.github.protobufel.grammar.ProtoParser.Uint64FieldOptionContext;
-import com.github.protobufel.grammar.SymbolScopes.NameContext;
-import com.google.protobuf.ByteString;
-import com.google.protobuf.DescriptorProtos;
-import com.google.protobuf.DescriptorProtos.DescriptorProto.ExtensionRange;
-import com.google.protobuf.DescriptorProtos.EnumValueDescriptorProto;
-import com.google.protobuf.DescriptorProtos.FieldDescriptorProto;
-import com.google.protobuf.DescriptorProtos.FieldDescriptorProto.Type;
-import com.google.protobuf.DescriptorProtos.FieldDescriptorProtoOrBuilder;
-import com.google.protobuf.DescriptorProtos.FieldOptions;
-import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
-import com.google.protobuf.DescriptorProtos.FileDescriptorProtoOrBuilder;
-import com.google.protobuf.DescriptorProtos.FileOptions.OptimizeMode;
-import com.google.protobuf.DescriptorProtos.MethodDescriptorProto;
-import com.google.protobuf.DescriptorProtos.OneofDescriptorProto;
-import com.google.protobuf.DescriptorProtos.OneofDescriptorProtoOrBuilder;
-import com.google.protobuf.DescriptorProtos.ServiceDescriptorProto;
-import com.google.protobuf.DescriptorProtos.UninterpretedOption;
-import com.google.protobuf.Descriptors.Descriptor;
-import com.google.protobuf.Descriptors.EnumDescriptor;
-import com.google.protobuf.Descriptors.FileDescriptor;
+import java.util.AbstractMap.SimpleEntry;
+import java.util.*;
+import java.util.Map.Entry;
+
+import static com.github.protobufel.grammar.PrimitiveTypesUtil.*;
 
 /**
  * A parser from .proto into FileDescriptorProto.
@@ -148,9 +60,9 @@ import com.google.protobuf.Descriptors.FileDescriptor;
  * @author protobufel@gmail.com David Tesler
  */
 class ProtoFileParser extends ProtoBaseListener {
-  private static final String AGREGATE_VALUE_FIELD_DELIMITER = " ";
   // private static final int UNINTERPRETED_OPTION_FIELD_NUMBER = 999;
   public static final int MAX_FIELD_NUMBER = 536870911;
+  private static final String AGREGATE_VALUE_FIELD_DELIMITER = " ";
   protected final FileDescriptorProto.Builder fileBuilder;
   // protected SourceCodeInfo.Builder sourceBuilder;
   private final Scopes scopes;
@@ -272,8 +184,9 @@ class ProtoFileParser extends ProtoBaseListener {
   public void exitStandardFileOptionJavaGenerateEqualsAndHash(
       final StandardFileOptionJavaGenerateEqualsAndHashContext ctx) {
     verifyOptionNameUnique("javaGenerateEqualsAndHash", ctx.getStart());
-    scopes.getFileOptions().setJavaGenerateEqualsAndHash(
-        Boolean.valueOf(ctx.BooleanLiteral().getText()));
+    scopes
+        .getFileOptions()
+        .setJavaGenerateEqualsAndHash(Boolean.valueOf(ctx.BooleanLiteral().getText()));
   }
 
   @Override
@@ -301,20 +214,23 @@ class ProtoFileParser extends ProtoBaseListener {
   public void exitStandardMessageOptionMessageSetWireFormat(
       final StandardMessageOptionMessageSetWireFormatContext ctx) {
     verifyOptionNameUnique("messageSetWireFormat", ctx.getStart());
-    scopes.getMessageOptions().setMessageSetWireFormat(
-        Boolean.valueOf(ctx.BooleanLiteral().getText()));
+    scopes
+        .getMessageOptions()
+        .setMessageSetWireFormat(Boolean.valueOf(ctx.BooleanLiteral().getText()));
   }
 
   @Override
   public void exitStandardMessageOptionNoStandardDescriptorAccessor(
       final StandardMessageOptionNoStandardDescriptorAccessorContext ctx) {
     verifyOptionNameUnique("noStandardDescriptorAccessor", ctx.getStart());
-    scopes.getMessageOptions().setNoStandardDescriptorAccessor(
-        Boolean.valueOf(ctx.BooleanLiteral().getText()));
+    scopes
+        .getMessageOptions()
+        .setNoStandardDescriptorAccessor(Boolean.valueOf(ctx.BooleanLiteral().getText()));
   }
 
   @Override
-  public void exitStandardMessageOptionDeprecated(final StandardMessageOptionDeprecatedContext ctx) {
+  public void exitStandardMessageOptionDeprecated(
+      final StandardMessageOptionDeprecatedContext ctx) {
     verifyOptionNameUnique("deprecated", ctx.getStart());
     scopes.getMessageOptions().setDeprecated(Boolean.valueOf(ctx.BooleanLiteral().getText()));
   }
@@ -322,7 +238,8 @@ class ProtoFileParser extends ProtoBaseListener {
   // **** Standard ServiceOptions
 
   @Override
-  public void exitStandardServiceOptionDeprecated(final StandardServiceOptionDeprecatedContext ctx) {
+  public void exitStandardServiceOptionDeprecated(
+      final StandardServiceOptionDeprecatedContext ctx) {
     verifyOptionNameUnique("deprecated", ctx.getStart());
     scopes.getServiceOptions().setDeprecated(Boolean.valueOf(ctx.BooleanLiteral().getText()));
   }
@@ -404,10 +321,14 @@ class ProtoFileParser extends ProtoBaseListener {
 
     for (final CustomOptionNamePartContext part : ctx.customOptionName().customOptionNamePart()) {
       if (part.identifier() == null) {
-        optionBuilder.addNameBuilder().setNamePart(part.customOptionNamePartId().getText())
+        optionBuilder
+            .addNameBuilder()
+            .setNamePart(part.customOptionNamePartId().getText())
             .setIsExtension(true);
       } else {
-        optionBuilder.addNameBuilder().setNamePart(part.identifier().getText())
+        optionBuilder
+            .addNameBuilder()
+            .setNamePart(part.identifier().getText())
             .setIsExtension(false);
       }
     }
@@ -427,19 +348,19 @@ class ProtoFileParser extends ProtoBaseListener {
       if (optionScalarValue.identifier() != null) {
         optionBuilder.setIdentifierValue(optionScalarValue.identifier().getText());
       } else if (optionScalarValue.BooleanLiteral() != null) {
-        optionBuilder.setStringValue(ByteString.copyFromUtf8(optionScalarValue.BooleanLiteral()
-            .getText()));
+        optionBuilder.setStringValue(
+            ByteString.copyFromUtf8(optionScalarValue.BooleanLiteral().getText()));
       } else if (optionScalarValue.StringLiteral() != null) {
-        optionBuilder.setStringValue(ByteString.copyFromUtf8(removeQuotes(optionScalarValue
-            .StringLiteral().getText())));
+        optionBuilder.setStringValue(
+            ByteString.copyFromUtf8(removeQuotes(optionScalarValue.StringLiteral().getText())));
       } else if (optionScalarValue.IntegerLiteral() != null) {
         // setCustomOptionIntValue(optionScalarValue.IntegerLiteral(), optionBuilder);
-        optionBuilder.setPositiveIntValue(PrimitiveTypesUtil.parseUInt64(optionScalarValue
-            .IntegerLiteral().getText()));
+        optionBuilder.setPositiveIntValue(
+            PrimitiveTypesUtil.parseUInt64(optionScalarValue.IntegerLiteral().getText()));
       } else if (optionScalarValue.NegativeIntegerLiteral() != null) {
         // setCustomOptionIntValue(optionScalarValue.NegativeIntegerLiteral(), optionBuilder);
-        optionBuilder.setNegativeIntValue(PrimitiveTypesUtil.parseInt64(optionScalarValue
-            .NegativeIntegerLiteral().getText()));
+        optionBuilder.setNegativeIntValue(
+            PrimitiveTypesUtil.parseInt64(optionScalarValue.NegativeIntegerLiteral().getText()));
       } else if (optionScalarValue.doubleValue() != null) {
         optionBuilder.setDoubleValue(Double.parseDouble(optionScalarValue.doubleValue().getText()));
       }
@@ -479,45 +400,43 @@ class ProtoFileParser extends ProtoBaseListener {
     }
   }
 
-
-
   /*
    * private StringBuilder appendDelimitedAggregateValue(final StringBuilder sb, final
    * OptionAggregateValueContext optionAggregateValue) { sb.append("{");
-   * 
+   *
    * for (OptionAggregateValueFieldContext field : optionAggregateValue.optionAggregateValueField())
    * { appendDelimitedAggregateValueField(sb, field).append(AGREGATE_VALUE_FIELD_DELIMITER); }
-   * 
+   *
    * return sb.append("}"); }
-   * 
+   *
    * private StringBuilder appendDelimitedAggregateValueField(final StringBuilder sb, final
    * OptionAggregateValueFieldContext field) {
    * sb.append(field.aggregateCustomOptionName().getText());
-   * 
+   *
    * final OptionAggregateValueContext optionAggregateValue = field.optionAggregateValue();
-   * 
+   *
    * if (optionAggregateValue != null) { appendDelimitedAggregateValue(sb, optionAggregateValue); }
    * else { sb.append(":");
-   * 
+   *
    * final OptionAggregateListValueContext optionAggregateListValue = field
    * .optionAggregateListValue();
-   * 
+   *
    * if (optionAggregateListValue != null) { appendAggregateValueList(sb, optionAggregateListValue);
    * } }
-   * 
+   *
    * return sb; }
-   * 
+   *
    * private void appendAggregateValueList(final StringBuilder sb, final
    * OptionAggregateListValueContext optionAggregateListValue) { sb.append("[");
-   * 
+   *
    * final List<OptionAggregateValueContext> aggregateValues = optionAggregateListValue
    * .optionAggregateValue();
-   * 
+   *
    * if (!aggregateValues.isEmpty()) { for (OptionAggregateValueContext aggregateValue :
    * aggregateValues) { appendDelimitedAggregateValue(sb, aggregateValue).append(","); }
-   * 
+   *
    * sb.deleteCharAt(sb.length() - 1); }
-   * 
+   *
    * sb.append("]"); }
    */
 
@@ -549,8 +468,13 @@ class ProtoFileParser extends ProtoBaseListener {
 
     // add group's field
     final FieldDescriptorProto.Builder fieldBuilder = scopes.addField();
-    setFieldBuilder(fieldBuilder, groupName.toLowerCase(), ctx.fieldNumber().getText(),
-        ctx.label().getText(), FieldDescriptorProto.Type.TYPE_GROUP).setTypeName(groupName);
+    setFieldBuilder(
+            fieldBuilder,
+            groupName.toLowerCase(),
+            ctx.fieldNumber().getText(),
+            ctx.label().getText(),
+            FieldDescriptorProto.Type.TYPE_GROUP)
+        .setTypeName(groupName);
 
     scopes.popScope();
     contextLookup.addGroup(fieldBuilder, ctx);
@@ -587,8 +511,9 @@ class ProtoFileParser extends ProtoBaseListener {
   public void exitEnumField(final EnumFieldContext ctx) {
     final EnumValueDescriptorProto.Builder enumValueBuilder =
         EnumValueDescriptorProto.Builder.class.cast(scopes.getProtoBuilder());
-    enumValueBuilder.setName(ctx.identifier().getText()).setNumber(
-        Integer.decode(ctx.enumValue().getText()));
+    enumValueBuilder
+        .setName(ctx.identifier().getText())
+        .setNumber(Integer.decode(ctx.enumValue().getText()));
     scopes.popScope();
   }
 
@@ -629,21 +554,35 @@ class ProtoFileParser extends ProtoBaseListener {
 
     if (optionalScalarField != null) {
       final ParseTree primitiveField = optionalScalarField.getChild(0);
-      setScalarFieldBuilder(fieldBuilder, primitiveField.getChild(1).getText(), // name
+      setScalarFieldBuilder(
+          fieldBuilder,
+          primitiveField.getChild(1).getText(), // name
           primitiveField.getChild(3).getText(), // number
           "optional", // label
           primitiveField.getChild(0).getText()); // type
     } else if (ctx.enumDefaultField() != null) {
       final EnumDefaultFieldContext enumDefaultField = ctx.enumDefaultField();
-      setMessageFieldBuilder(fieldBuilder, enumDefaultField.identifier().getText(),
-          enumDefaultField.fieldNumber().getText(), "optional",
-          enumDefaultField.extendedId().getText()).setType(Type.TYPE_ENUM);
+      setMessageFieldBuilder(
+              fieldBuilder,
+              enumDefaultField.identifier().getText(),
+              enumDefaultField.fieldNumber().getText(),
+              "optional",
+              enumDefaultField.extendedId().getText())
+          .setType(Type.TYPE_ENUM);
     } else if (ctx.scalarType() != null) {
-      setScalarFieldBuilder(fieldBuilder, ctx.identifier().getText(), ctx.fieldNumber().getText(),
-          ctx.label().getText(), ctx.scalarType().getText());
+      setScalarFieldBuilder(
+          fieldBuilder,
+          ctx.identifier().getText(),
+          ctx.fieldNumber().getText(),
+          ctx.label().getText(),
+          ctx.scalarType().getText());
     } else { // this is a message or enum field
-      setMessageFieldBuilder(fieldBuilder, ctx.identifier().getText(), ctx.fieldNumber().getText(),
-          ctx.label().getText(), ctx.extendedId().getText());
+      setMessageFieldBuilder(
+          fieldBuilder,
+          ctx.identifier().getText(),
+          ctx.fieldNumber().getText(),
+          ctx.label().getText(),
+          ctx.extendedId().getText());
     }
 
     scopes.popScope();
@@ -796,7 +735,9 @@ class ProtoFileParser extends ProtoBaseListener {
   public void exitMethodStatement(final MethodStatementContext ctx) {
     final MethodDescriptorProto.Builder methodBuilder =
         MethodDescriptorProto.Builder.class.cast(scopes.getProtoBuilder());
-    methodBuilder.setName(ctx.identifier().getText()).setInputType(ctx.extendedId(0).getText())
+    methodBuilder
+        .setName(ctx.identifier().getText())
+        .setInputType(ctx.extendedId(0).getText())
         .setOutputType(ctx.extendedId(1).getText());
     scopes.popScope();
   }
@@ -833,21 +774,35 @@ class ProtoFileParser extends ProtoBaseListener {
 
     if (optionalScalarField != null) {
       final ParseTree primitiveField = optionalScalarField.getChild(0);
-      setScalarFieldBuilder(fieldBuilder, primitiveField.getChild(1).getText(), // name
+      setScalarFieldBuilder(
+          fieldBuilder,
+          primitiveField.getChild(1).getText(), // name
           primitiveField.getChild(3).getText(), // number
           "optional", // label
           primitiveField.getChild(0).getText()); // type
     } else if (ctx.enumDefaultField() != null) {
       final EnumDefaultFieldContext enumDefaultField = ctx.enumDefaultField();
-      setMessageFieldBuilder(fieldBuilder, enumDefaultField.identifier().getText(),
-          enumDefaultField.fieldNumber().getText(), "optional",
-          enumDefaultField.extendedId().getText()).setType(Type.TYPE_ENUM);
+      setMessageFieldBuilder(
+              fieldBuilder,
+              enumDefaultField.identifier().getText(),
+              enumDefaultField.fieldNumber().getText(),
+              "optional",
+              enumDefaultField.extendedId().getText())
+          .setType(Type.TYPE_ENUM);
     } else if (ctx.scalarType() != null) {
-      setScalarFieldBuilder(fieldBuilder, ctx.identifier().getText(), ctx.fieldNumber().getText(),
-          "optional", ctx.scalarType().getText());
+      setScalarFieldBuilder(
+          fieldBuilder,
+          ctx.identifier().getText(),
+          ctx.fieldNumber().getText(),
+          "optional",
+          ctx.scalarType().getText());
     } else { // this is a message field
-      setMessageFieldBuilder(fieldBuilder, ctx.identifier().getText(), ctx.fieldNumber().getText(),
-          "optional", ctx.extendedId().getText());
+      setMessageFieldBuilder(
+          fieldBuilder,
+          ctx.identifier().getText(),
+          ctx.fieldNumber().getText(),
+          "optional",
+          ctx.extendedId().getText());
     }
 
     scopes.popScope();
@@ -870,8 +825,13 @@ class ProtoFileParser extends ProtoBaseListener {
 
     // add group's field
     final FieldDescriptorProto.Builder fieldBuilder = scopes.addField();
-    setFieldBuilder(fieldBuilder, groupName.toLowerCase(), ctx.fieldNumber().getText(), "optional",
-        FieldDescriptorProto.Type.TYPE_GROUP).setTypeName(groupName);
+    setFieldBuilder(
+            fieldBuilder,
+            groupName.toLowerCase(),
+            ctx.fieldNumber().getText(),
+            "optional",
+            FieldDescriptorProto.Type.TYPE_GROUP)
+        .setTypeName(groupName);
 
     scopes.popScope();
     contextLookup.addGroup(fieldBuilder, ctx);
@@ -882,9 +842,13 @@ class ProtoFileParser extends ProtoBaseListener {
   // **************** ParserUtils
 
   private FieldDescriptorProto.Builder setMessageFieldBuilder(
-      final FieldDescriptorProto.Builder fieldBuilder, final String name, final String number,
-      final String label, final String typeName) {
-    return fieldBuilder.setName(name)
+      final FieldDescriptorProto.Builder fieldBuilder,
+      final String name,
+      final String number,
+      final String label,
+      final String typeName) {
+    return fieldBuilder
+        .setName(name)
         .setLabel(FieldDescriptorProto.Label.valueOf("LABEL_" + label.toUpperCase()))
         .setNumber(Integer.decode(number))
         // .setType(FieldDescriptorProto.Type.TYPE_MESSAGE) this could be ENUM or MESSAGE, so we
@@ -893,18 +857,30 @@ class ProtoFileParser extends ProtoBaseListener {
   }
 
   private FieldDescriptorProto.Builder setScalarFieldBuilder(
-      final FieldDescriptorProto.Builder fieldBuilder, final String name, final String number,
-      final String label, final String type) {
-    return setFieldBuilder(fieldBuilder, name, number, label,
+      final FieldDescriptorProto.Builder fieldBuilder,
+      final String name,
+      final String number,
+      final String label,
+      final String type) {
+    return setFieldBuilder(
+        fieldBuilder,
+        name,
+        number,
+        label,
         FieldDescriptorProto.Type.valueOf("TYPE_" + type.toUpperCase()));
   }
 
   private FieldDescriptorProto.Builder setFieldBuilder(
-      final FieldDescriptorProto.Builder fieldBuilder, final String name, final String number,
-      final String label, final FieldDescriptorProto.Type type) {
-    return fieldBuilder.setName(name)
+      final FieldDescriptorProto.Builder fieldBuilder,
+      final String name,
+      final String number,
+      final String label,
+      final FieldDescriptorProto.Type type) {
+    return fieldBuilder
+        .setName(name)
         .setLabel(FieldDescriptorProto.Label.valueOf("LABEL_" + label.toUpperCase()))
-        .setNumber(Integer.decode(number)).setType(type);
+        .setNumber(Integer.decode(number))
+        .setType(type);
   }
 
   private String removeQuotes(final String text) {
@@ -924,7 +900,7 @@ class ProtoFileParser extends ProtoBaseListener {
     private final IProtoErrorListener errorListener;
 
     public ContextLookup(final IProtoErrorListener errorListener) {
-      lookup = new IdentityHashMap<Object, ParseTree>();
+      lookup = new IdentityHashMap<>();
       this.errorListener = errorListener;
     }
 
@@ -936,7 +912,8 @@ class ProtoFileParser extends ProtoBaseListener {
       return lookup.put(key, ctx);
     }
 
-    public ParseTree addField(final FieldDescriptorProtoOrBuilder key, final OneofFieldContext ctx) {
+    public ParseTree addField(
+        final FieldDescriptorProtoOrBuilder key, final OneofFieldContext ctx) {
       return lookup.put(key, ctx);
     }
 
@@ -944,11 +921,13 @@ class ProtoFileParser extends ProtoBaseListener {
       return lookup.put(key, ctx);
     }
 
-    public ParseTree addGroup(final FieldDescriptorProtoOrBuilder key, final OneofGroupContext ctx) {
+    public ParseTree addGroup(
+        final FieldDescriptorProtoOrBuilder key, final OneofGroupContext ctx) {
       return lookup.put(key, ctx);
     }
 
-    public ParseTree addExtensionRange(final ExtensionRange.Builder key, final ExtensionsContext ctx) {
+    public ParseTree addExtensionRange(
+        final ExtensionRange.Builder key, final ExtensionsContext ctx) {
       return lookup.put(key, ctx);
     }
 
@@ -957,12 +936,15 @@ class ProtoFileParser extends ProtoBaseListener {
     }
 
     public void reportInvalidDefaultValue(final ParserRuleContext ctx, final Exception e) {
-      errorListener.validationError(ctx.getStart().getLine(), ctx.getStart()
-          .getCharPositionInLine(), e.getMessage(), new RuntimeException(e));
+      errorListener.validationError(
+          ctx.getStart().getLine(),
+          ctx.getStart().getCharPositionInLine(),
+          e.getMessage(),
+          new RuntimeException(e));
     }
 
-    public void reportFieldInExtensionRangeEror(final FieldDescriptorProtoOrBuilder field,
-        final boolean removeMe) {
+    public void reportFieldInExtensionRangeEror(
+        final FieldDescriptorProtoOrBuilder field, final boolean removeMe) {
       final ParseTree context = getContext(field, removeMe);
       final Token token;
 
@@ -972,19 +954,22 @@ class ProtoFileParser extends ProtoBaseListener {
         token = getFieldNumberToken((FieldContext) context);
       }
 
-      errorListener.validationError(token.getLine(), token.getCharPositionInLine(), null,
+      errorListener.validationError(
+          token.getLine(),
+          token.getCharPositionInLine(),
+          null,
           new FieldInExtensionRangeException(field.getName()));
     }
 
-    public void reportInvalidExtensionRange(final InvalidExtensionRange exception,
-        final ExtensionsContext ctx) {
+    public void reportInvalidExtensionRange(
+        final InvalidExtensionRange exception, final ExtensionsContext ctx) {
       final Token token = ctx.getStart();
-      errorListener
-          .validationError(token.getLine(), token.getCharPositionInLine(), null, exception);
+      errorListener.validationError(
+          token.getLine(), token.getCharPositionInLine(), null, exception);
     }
 
-    public void reportNonUniqueFieldNameError(final FieldDescriptorProtoOrBuilder field,
-        final boolean removeMe) {
+    public void reportNonUniqueFieldNameError(
+        final FieldDescriptorProtoOrBuilder field, final boolean removeMe) {
       final ParseTree context = getContext(field, removeMe);
       final Token token;
 
@@ -994,23 +979,27 @@ class ProtoFileParser extends ProtoBaseListener {
         token = getFieldNameToken((FieldContext) context);
       }
 
-      errorListener.validationError(token.getLine(), token.getCharPositionInLine(), null,
+      errorListener.validationError(
+          token.getLine(),
+          token.getCharPositionInLine(),
+          null,
           new NonUniqueException(field.getName(), "field name"));
     }
 
-
-    public void reportNonUniqueOneofNameError(final OneofDescriptorProtoOrBuilder oneof,
-        final boolean removeMe) {
+    public void reportNonUniqueOneofNameError(
+        final OneofDescriptorProtoOrBuilder oneof, final boolean removeMe) {
       final OneofStatementContext context = (OneofStatementContext) getContext(oneof, removeMe);
       final Token token = context.identifier().getStart();
 
-      errorListener.validationError(token.getLine(), token.getCharPositionInLine(), null,
+      errorListener.validationError(
+          token.getLine(),
+          token.getCharPositionInLine(),
+          null,
           new NonUniqueException(oneof.getName(), "field name"));
     }
 
-
-    public void reportNonUniqueFieldNumberError(final FieldDescriptorProtoOrBuilder field,
-        final boolean removeMe) {
+    public void reportNonUniqueFieldNumberError(
+        final FieldDescriptorProtoOrBuilder field, final boolean removeMe) {
       final ParseTree context = getContext(field, removeMe);
       final Token token;
 
@@ -1020,30 +1009,45 @@ class ProtoFileParser extends ProtoBaseListener {
         token = getFieldNumberToken((FieldContext) context);
       }
 
-      errorListener.validationError(token.getLine(), token.getCharPositionInLine(), null,
+      errorListener.validationError(
+          token.getLine(),
+          token.getCharPositionInLine(),
+          null,
           new NonUniqueException(field.getName(), "field number"));
     }
 
-    public void reportNonUniqueExtensionNumberError(final FieldDescriptorProtoOrBuilder field,
-        final boolean removeMe) {
+    public void reportNonUniqueExtensionNumberError(
+        final FieldDescriptorProtoOrBuilder field, final boolean removeMe) {
       final Token token = getFieldNumberToken((FieldContext) getContext(field, removeMe));
-      errorListener.validationError(token.getLine(), token.getCharPositionInLine(), null,
+      errorListener.validationError(
+          token.getLine(),
+          token.getCharPositionInLine(),
+          null,
           new NonUniqueExtensionNumber(field.getExtendee(), field.getName(), field.getNumber()));
     }
 
-    public void reportUnresolvedTypeNameError(final FieldDescriptorProtoOrBuilder field,
-        final List<String> unresolvedInfo, final boolean removeMe) {
+    public void reportUnresolvedTypeNameError(
+        final FieldDescriptorProtoOrBuilder field,
+        final List<String> unresolvedInfo,
+        final boolean removeMe) {
       // final Token token = getFieldTypeNameToken((FieldContext) getContext(field, removeMe));
       // report just a start of the field context, as there can be also the extendContext
       // it would be overkill to cache extendContext just for this, though we could!
       final Token token = ((FieldContext) getContext(field, removeMe)).getStart();
-      errorListener.validationError(token.getLine(), token.getCharPositionInLine(), null,
+      errorListener.validationError(
+          token.getLine(),
+          token.getCharPositionInLine(),
+          null,
           new UnresolvedTypeNameException(field.getName(), unresolvedInfo));
     }
 
-    public void reportNonUniqueOptionNameError(final String optionName, final Token optionNameToken) {
-      errorListener.validationError(optionNameToken.getLine(), optionNameToken
-          .getCharPositionInLine(), null, new NonUniqueException(optionName, "option name"));
+    public void reportNonUniqueOptionNameError(
+        final String optionName, final Token optionNameToken) {
+      errorListener.validationError(
+          optionNameToken.getLine(),
+          optionNameToken.getCharPositionInLine(),
+          null,
+          new NonUniqueException(optionName, "option name"));
     }
 
     private Token getGroupNumberToken(final GroupContext ctx) {
@@ -1095,8 +1099,8 @@ class ProtoFileParser extends ProtoBaseListener {
 
   public static final class ParsedContext {
     private static final ParsedContext DEFAULT_DESCRIPTOR_CONTEXT = new ParsedContext();
-    private FileDescriptorProtoOrBuilder proto;
     private final List<Map.Entry<FieldDescriptorProto.Builder, FieldContext>> unresolved;
+    private FileDescriptorProtoOrBuilder proto;
 
     private ParsedContext() {
       proto = DescriptorProtos.getDescriptor().toProto();
@@ -1108,8 +1112,10 @@ class ProtoFileParser extends ProtoBaseListener {
       unresolved = Collections.emptyList();
     }
 
-    private ParsedContext(final FileDescriptorProto.Builder proto,
-        final List<FieldDescriptorProto.Builder> unresolved, final ContextLookup lookup) {
+    private ParsedContext(
+        final FileDescriptorProto.Builder proto,
+        final List<FieldDescriptorProto.Builder> unresolved,
+        final ContextLookup lookup) {
       this.proto = proto;
 
       if ((unresolved == null) || unresolved.isEmpty()) {
@@ -1119,7 +1125,7 @@ class ProtoFileParser extends ProtoBaseListener {
           throw new NullPointerException();
         }
 
-        this.unresolved = new ArrayList<Map.Entry<FieldDescriptorProto.Builder, FieldContext>>();
+        this.unresolved = new ArrayList<>();
 
         for (final FieldDescriptorProto.Builder field : unresolved) {
           final FieldContext context = (FieldContext) lookup.getContext(field, false);
@@ -1128,8 +1134,8 @@ class ProtoFileParser extends ProtoBaseListener {
             throw new IllegalStateException("field context must not be null");
           }
 
-          this.unresolved.add(new SimpleEntry<FieldDescriptorProto.Builder, FieldContext>(field,
-              context));
+          this.unresolved.add(
+                  new SimpleEntry<>(field, context));
         }
       }
     }
@@ -1146,13 +1152,13 @@ class ProtoFileParser extends ProtoBaseListener {
       return proto instanceof FileDescriptorProto;
     }
 
-    public boolean resolveAllRefs(final Collection<FileDescriptor> dependencies,
-        final IProtoErrorListener errorListener) {
+    public boolean resolveAllRefs(
+        final Collection<FileDescriptor> dependencies, final IProtoErrorListener errorListener) {
       if (isBuilt()) {
         throw new IllegalStateException("not supported when proto is already built");
       }
 
-      final Map<String, NameContext> cache = new HashMap<String, NameContext>();
+      final Map<String, NameContext> cache = new HashMap<>();
 
       if (resolveAllRefs(dependencies, errorListener, cache)) {
         return true;
@@ -1165,8 +1171,10 @@ class ProtoFileParser extends ProtoBaseListener {
       return false;
     }
 
-    private boolean resolveAllRefs(final Collection<FileDescriptor> dependencies,
-        final IProtoErrorListener errorListener, final Map<String, NameContext> cache) {
+    private boolean resolveAllRefs(
+        final Collection<FileDescriptor> dependencies,
+        final IProtoErrorListener errorListener,
+        final Map<String, NameContext> cache) {
       if (unresolved.isEmpty()) {
         proto = ((FileDescriptorProto.Builder) proto).build();
         return true;
@@ -1178,13 +1186,7 @@ class ProtoFileParser extends ProtoBaseListener {
       for (final FileDescriptor dependency : dependencies) {
         // FIXME check with protoc that only exact package names are searchable
         if (proto.getPackage().equals(dependency.getPackage())) {
-          for (final Iterator<Entry<FieldDescriptorProto.Builder, FieldContext>> iterator =
-              unresolved.iterator(); iterator.hasNext();) {
-            final Entry<FieldDescriptorProto.Builder, FieldContext> entry = iterator.next();
-            if (resolveField(entry.getKey(), entry.getValue(), dependency, cache)) {
-              iterator.remove();
-            }
-          }
+          unresolved.removeIf(entry -> resolveField(entry.getKey(), entry.getValue(), dependency, cache));
 
           if (unresolved.isEmpty()) {
             proto = ((FileDescriptorProto.Builder) proto).build();
@@ -1211,8 +1213,10 @@ class ProtoFileParser extends ProtoBaseListener {
       proto = ((FileDescriptorProto.Builder) proto).build();
     }
 
-    private boolean resolveField(final FieldDescriptorProto.Builder field,
-        final FieldContext fieldContext, final FileDescriptor dependency,
+    private boolean resolveField(
+        final FieldDescriptorProto.Builder field,
+        final FieldContext fieldContext,
+        final FileDescriptor dependency,
         final Map<String, NameContext> cache) {
       boolean isResolved = true;
 
@@ -1245,8 +1249,8 @@ class ProtoFileParser extends ProtoBaseListener {
       return isResolved;
     }
 
-    private NameContext resolveName(final String name, final FileDescriptor fileProto,
-        final Map<String, NameContext> cache) {
+    private NameContext resolveName(
+        final String name, final FileDescriptor fileProto, final Map<String, NameContext> cache) {
       NameContext nameContext = cache.get(name);
 
       if (nameContext != null) {
@@ -1311,7 +1315,7 @@ class ProtoFileParser extends ProtoBaseListener {
       }
 
       final List<String> publicDependencies =
-          new ArrayList<String>(fileProto.getPublicDependencyCount());
+              new ArrayList<>(fileProto.getPublicDependencyCount());
 
       for (final Integer index : fileProto.getPublicDependencyList()) {
         publicDependencies.add(fileProto.getDependency(index));
@@ -1320,25 +1324,30 @@ class ProtoFileParser extends ProtoBaseListener {
       return publicDependencies;
     }
 
-    private void reportUnresolvedTypeNameError(final FieldDescriptorProtoOrBuilder field,
-        final FieldContext fieldContext, final IProtoErrorListener errorListener) {
+    private void reportUnresolvedTypeNameError(
+        final FieldDescriptorProtoOrBuilder field,
+        final FieldContext fieldContext,
+        final IProtoErrorListener errorListener) {
       final Token token = fieldContext.getStart();
-      errorListener.validationError(token.getLine(), token.getCharPositionInLine(), null,
+      errorListener.validationError(
+          token.getLine(),
+          token.getCharPositionInLine(),
+          null,
           new UnresolvedTypeNameException(field.getName(), getUnresolvedInfo(field)));
     }
 
     // FIXME combine with Symbol.getUnresolvedInfo()?
     private List<String> getUnresolvedInfo(final FieldDescriptorProtoOrBuilder field) {
-      final List<String> unresolvedProps = new ArrayList<String>();
+      final List<String> unresolvedProps = new ArrayList<>();
 
       if (field.hasExtendee() && !field.getExtendee().startsWith(".")) {
-        unresolvedProps.add("field " + field.getName() + "'s extendee property: '"
-            + field.getExtendee() + "'");
+        unresolvedProps.add(
+            "field " + field.getName() + "'s extendee property: '" + field.getExtendee() + "'");
       }
 
       if (field.hasTypeName() && !field.getTypeName().startsWith(".")) {
-        unresolvedProps.add("field " + field.getName() + "'s typeName property: '"
-            + field.getTypeName() + "'");
+        unresolvedProps.add(
+            "field " + field.getName() + "'s typeName property: '" + field.getTypeName() + "'");
       }
 
       return unresolvedProps;

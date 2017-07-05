@@ -27,31 +27,7 @@
 
 package com.github.protobufel.grammar;
 
-import static com.github.protobufel.grammar.ParserUtils.getEndPositionInLine;
-import static com.github.protobufel.grammar.ParserUtils.getLineCount;
-import static com.github.protobufel.grammar.ParserUtils.getTrimmedBlockCommentContent;
-import static com.github.protobufel.grammar.ProtoParser.LINE_COMMENT;
-import static com.github.protobufel.grammar.ProtoParser.RBRACE;
-import static com.github.protobufel.grammar.ProtoParser.SEMI;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Set;
-
-import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.Token;
-import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.TerminalNode;
-
-import com.github.protobufel.grammar.ParserUtils.CommonTokenStreamEx;
+import com.github.protobufel.grammar.ParserUtils.*;
 import com.google.protobuf.DescriptorProtos.DescriptorProto;
 import com.google.protobuf.DescriptorProtos.FileDescriptorProto;
 import com.google.protobuf.DescriptorProtos.SourceCodeInfo;
@@ -60,6 +36,15 @@ import com.google.protobuf.DescriptorProtos.UninterpretedOption;
 import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
+
+import java.util.*;
+
+import static com.github.protobufel.grammar.ParserUtils.*;
+import static com.github.protobufel.grammar.ProtoParser.*;
 
 // ********************* LocationBuilder START ****************************************************
 
@@ -67,14 +52,19 @@ import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 class LocationBuilder {
   private static final String NEW_LINE = "\n";
   private static final Set<Integer> COMMENT_SKIPPERS;
-  private Location.Builder location;
+
+  static {
+    COMMENT_SKIPPERS = new HashSet<>();
+    COMMENT_SKIPPERS.add(RBRACE);
+    COMMENT_SKIPPERS.add(SEMI);
+  }
+
   private final Path path;
   // private ScopeManager scopeManager;
   private final SourceCodeInfo.Builder sourceBuilder;
   private final IdentityHashMap<Token, String> leadingComments;
   private final CommonTokenStreamEx tokens;
-
-  private Scope currentScope;
+  private Location.Builder location;
 
   // Because Location path requires the repeated element to know its index
   // within its parent,
@@ -82,20 +72,15 @@ class LocationBuilder {
   // element counters, or
   // as a fake FileDescriptorProto only for repeated fields within it with empty
   // elements.
+  private Scope currentScope;
 
-  static {
-    COMMENT_SKIPPERS = new HashSet<Integer>();
-    COMMENT_SKIPPERS.add(RBRACE);
-    COMMENT_SKIPPERS.add(SEMI);
-  }
-
-  public LocationBuilder(final SourceCodeInfo.Builder sourceBuilder,
-      final CommonTokenStreamEx tokens) {
+  public LocationBuilder(
+      final SourceCodeInfo.Builder sourceBuilder, final CommonTokenStreamEx tokens) {
     location = null;
     path = new Path();
     currentScope = new FileScope();
     this.sourceBuilder = sourceBuilder;
-    leadingComments = new IdentityHashMap<Token, String>();
+    leadingComments = new IdentityHashMap<>();
     this.tokens = tokens;
   }
 
@@ -163,7 +148,8 @@ class LocationBuilder {
 
   public LocationBuilder addLocationClone() {
     location =
-        location == null ? sourceBuilder.getLocationBuilder(sourceBuilder.getLocationCount() - 1)
+        location == null
+            ? sourceBuilder.getLocationBuilder(sourceBuilder.getLocationCount() - 1)
             : location;
     location = sourceBuilder.addLocationBuilder().addAllPath(location.getPathList());
     return this;
@@ -177,8 +163,9 @@ class LocationBuilder {
     // FIXME
     if (parts != null && parts.length > 0) {
       for (final ParseTree parseTree : parts) {
-        location
-            .addAllSpan(parseTree instanceof ParserRuleContext ? getSpan((ParserRuleContext) parseTree)
+        location.addAllSpan(
+            parseTree instanceof ParserRuleContext
+                ? getSpan((ParserRuleContext) parseTree)
                 : getSpan((TerminalNode) parseTree));
       }
     }
@@ -230,18 +217,25 @@ class LocationBuilder {
     final Token stopToken = ctx.getStop();
 
     if (stopToken.getLine() == startToken.getLine()) {
-      return Arrays.asList(startToken.getLine() - 1, startToken.getCharPositionInLine(),
+      return Arrays.asList(
+          startToken.getLine() - 1,
+          startToken.getCharPositionInLine(),
           getEndPositionInLine(stopToken));
 
     } else {
-      return Arrays.asList(startToken.getLine() - 1, startToken.getCharPositionInLine(),
-          stopToken.getLine() - 1, getEndPositionInLine(stopToken));
+      return Arrays.asList(
+          startToken.getLine() - 1,
+          startToken.getCharPositionInLine(),
+          stopToken.getLine() - 1,
+          getEndPositionInLine(stopToken));
     }
   }
 
   private Iterable<Integer> getSpan(final TerminalNode ctx) {
     final Token startToken = ctx.getSymbol();
-    return Arrays.asList(startToken.getLine() - 1, startToken.getCharPositionInLine(),
+    return Arrays.asList(
+        startToken.getLine() - 1,
+        startToken.getCharPositionInLine(),
         getEndPositionInLine(startToken));
   }
 
@@ -287,8 +281,9 @@ class LocationBuilder {
     final StringBuilder builder = new StringBuilder();
     int currentLine = startToken.getLine();
 
-    for (final ListIterator<Token> iterator = comments.listIterator(comments.size()); iterator
-        .hasPrevious();) {
+    for (final ListIterator<Token> iterator = comments.listIterator(comments.size());
+        iterator.hasPrevious();
+        ) {
       final Token token = iterator.previous();
       final String text = token.getText();
 
@@ -361,15 +356,16 @@ class LocationBuilder {
     return COMMENT_SKIPPERS.contains(nextToken);
   }
 
-  private int setLeadingComments(final Token previousToken, final Token startToken,
-      final List<Token> comments) {
+  private int setLeadingComments(
+      final Token previousToken, final Token startToken, final List<Token> comments) {
     final int skipLine = previousToken.getLine();
     final StringBuilder builder = new StringBuilder();
     int currentLine = startToken.getLine();
     int index = comments.size();
 
-    for (final ListIterator<Token> iterator = comments.listIterator(comments.size()); iterator
-        .hasPrevious();) {
+    for (final ListIterator<Token> iterator = comments.listIterator(comments.size());
+        iterator.hasPrevious();
+        ) {
       final Token token = iterator.previous();
 
       if (token.getLine() == skipLine) {
@@ -410,7 +406,7 @@ class LocationBuilder {
     private final List<Integer> path;
 
     private Path() {
-      path = new ArrayList<Integer>();
+      path = new ArrayList<>();
     }
 
     public boolean isEmpty() {
@@ -454,13 +450,13 @@ class LocationBuilder {
      */
     private final Descriptor protoDescriptor;
     private final Map<Integer, Integer> counters;
-    private Scope parent;
     private final int pathSize;
+    private Scope parent;
 
-    public Scope(final Descriptor protoDescriptor, final Scope parent,
-        final Collection<Integer> scopePath) {
+    public Scope(
+        final Descriptor protoDescriptor, final Scope parent, final Collection<Integer> scopePath) {
       this.protoDescriptor = protoDescriptor;
-      counters = new HashMap<Integer, Integer>();
+      counters = new HashMap<>();
       this.parent = parent;
       path.pushPath(scopePath);
       pathSize = scopePath.size();
@@ -536,8 +532,7 @@ class LocationBuilder {
     }
 
     public int getOptionsFieldNumber() {
-      final int optionsFieldNumber = protoDescriptor.findFieldByName("options").getNumber();
-      return optionsFieldNumber;
+      return protoDescriptor.findFieldByName("options").getNumber();
     }
 
     public int addOptionName() {
@@ -548,7 +543,7 @@ class LocationBuilder {
   private class FileScope extends Scope {
 
     public FileScope() {
-      super(FileDescriptorProto.getDescriptor(), null, Collections.<Integer>emptyList());
+      super(FileDescriptorProto.getDescriptor(), null, Collections.emptyList());
     }
 
     @Override
@@ -560,8 +555,8 @@ class LocationBuilder {
     public int addMessage() {
       final int index = addElement(FileDescriptorProto.MESSAGE_TYPE_FIELD_NUMBER);
       currentScope =
-          new MessageScope(this,
-              Arrays.asList(FileDescriptorProto.MESSAGE_TYPE_FIELD_NUMBER, index));
+          new MessageScope(
+              this, Arrays.asList(FileDescriptorProto.MESSAGE_TYPE_FIELD_NUMBER, index));
       return index;
     }
 
@@ -606,16 +601,18 @@ class LocationBuilder {
     public int addOptionName() {
       final int index = addElement(UninterpretedOption.NAME_FIELD_NUMBER);
       currentScope =
-          new GeneralScope(UninterpretedOption.NamePart.getDescriptor(), this, Arrays.asList(
-              UninterpretedOption.NAME_FIELD_NUMBER, index));
+          new GeneralScope(
+              UninterpretedOption.NamePart.getDescriptor(),
+              this,
+              Arrays.asList(UninterpretedOption.NAME_FIELD_NUMBER, index));
       return index;
     }
   }
 
   private class GeneralScope extends Scope {
 
-    public GeneralScope(final Descriptor protoDescriptor, final Scope parent,
-        final Collection<Integer> scopePath) {
+    public GeneralScope(
+        final Descriptor protoDescriptor, final Scope parent, final Collection<Integer> scopePath) {
       super(protoDescriptor, parent, scopePath);
     }
   }
